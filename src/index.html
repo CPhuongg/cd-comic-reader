@@ -121,15 +121,24 @@
     <div id="pages-container"></div>
   </div>
 
-  <!-- Paged mode navigation (LTR / RTL) -->
   <div id="paged-nav" style="display:none;">
     <button id="nav-prev" title="Trang trước">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
-    <div id="paged-page-info">1 / 1</div>
+    <div id="paged-page-info">
+      <input type="number" id="page-input" min="1" value="1" title="Nhập số trang và nhấn Enter">
+      <span id="page-total"> / 1</span>
+    </div>
     <button id="nav-next" title="Trang sau">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
+  </div>
+
+  <div class="setting-group" id="double-page-setting" style="display: none; margin-top: 15px;">
+    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--text-primary);">
+      <input type="checkbox" id="double-page-toggle">
+      Hiển thị 2 trang (Double Page)
+    </label>
   </div>
 
   <div id="loading" style="display:none;">

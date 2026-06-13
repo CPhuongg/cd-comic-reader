@@ -25,7 +25,7 @@ Local display images in comic style
 * **Auto-Resume Progress:** Monitors your scroll location and securely caches the exact pixel offset (`scrollTop`) to restore your exact reading position upon re-opening.
 * **Recent History Index:** Maintains an easily accessible list of your last 10 reading sessions, automatically rendering the comic's first page as an interactive thumbnail.
 * **Native Lazy Loading:** Defers out-of-viewport image rendering, safeguarding low RAM usage even when opening massive chapters containing hundreds of pages.
-* **Frameless Aesthetics:** Uses a custom titlebar coupled with drag region support for an sleek, unified application boundary[cite: 1, 2].
+* **Frameless Aesthetics:** Uses a custom titlebar coupled with drag region support for an sleek, unified application boundary.
 
 ---
 

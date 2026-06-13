@@ -304,11 +304,61 @@ body {
 #empty-shortcuts span { font-size: 11px; color: #2a2a2a; background: #161616; border: 1px solid #222; border-radius: 5px; padding: 4px 10px; }
 
 /* ── Reader ── */
-#reader { width: 100%; height: 100%; overflow-y: scroll; overflow-x: hidden; scroll-behavior: smooth; }
-#reader::-webkit-scrollbar { width: 6px; }
-#reader::-webkit-scrollbar-track { background: #0a0a0a; }
-#reader::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
-#reader::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+#reader { width: 100%; height: 100%; overflow-y: scroll; overflow-x: hidden; scroll-behavior: smooth; scrollbar-gutter: stable; scrollbar-color: var(--accent) #1a1a1a; scrollbar-width: auto; }
+#reader::-webkit-scrollbar { width: 12px; }
+#reader::-webkit-scrollbar-track { background: #1a1a1a; }
+#reader::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 6px; border: 2px solid #1a1a1a; }
+#reader::-webkit-scrollbar-thumb:hover { background: #ffc35c; }
+
+/* Chế độ paged: con trỏ dạng "click để chuyển trang" */
+#reader.paged-mode { cursor: pointer; }
+#reader.paged-mode #paged-nav,
+#reader.paged-mode .setting-group { cursor: default; }
+/* ── Thanh điều hướng trang (paged mode) ── */
+#paged-nav {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  align-items: center;
+  gap: 14px;
+  background: rgba(10,10,10,0.85);
+  border: 1px solid #2a2a2a;
+  border-radius: 24px;
+  padding: 6px 16px;
+  backdrop-filter: blur(6px);
+}
+#paged-nav button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+#paged-nav button:hover { background: var(--accent-dim); color: var(--accent); }
+#paged-nav button:disabled { opacity: 0.3; cursor: default; }
+#paged-nav button:disabled:hover { background: none; color: var(--text-secondary); }
+
+/* ── Bật/tắt hiển thị 2 trang (paged mode) ── */
+#double-page-setting {
+  position: fixed;
+  bottom: 16px;
+  left: calc(var(--sidebar-w) + 16px);
+  z-index: 20;
+  margin-top: 0 !important;
+  background: rgba(10,10,10,0.85);
+  border: 1px solid #2a2a2a;
+  border-radius: 20px;
+  padding: 6px 14px;
+  backdrop-filter: blur(6px);
+}
+
 #pages-container { display: flex; flex-direction: column; align-items: center; padding: 20px 0 60px; gap: 4px; min-height: 100%; }
 .page-img { display: block; width: 70%; height: auto; image-rendering: -webkit-optimize-contrast; transition: width 0.2s ease; }
 
@@ -348,4 +398,113 @@ body {
   background: rgba(192, 57, 43, 0.2);
   color: #e74c3c;
   opacity: 1;
+}
+
+/* ── Read mode buttons container ── */
+#read-mode-options {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 4px 0; /* Khoảng cách giữa các nút */
+  margin-top: 5px;
+}
+
+/* ── Base style cho từng nút chế độ ── */
+.mode-btn {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: center;
+  height: 32px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  padding: 0 4px;
+}
+
+/* Hiển thị Icon SVG bên trong nút */
+.mode-btn svg {
+  display: block;
+  margin: 0 auto 3px auto; /* Đẩy icon lên trên text một chút */
+  opacity: 0.6;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+/* ── Hiệu ứng Hover ── */
+.mode-btn:hover {
+  background: var(--btn-hover);
+  color: var(--text-primary);
+  border-color: #3a3a3a;
+}
+
+.mode-btn:hover svg {
+  opacity: 0.9;
+  transform: translateY(-1px); /* Nhấc nhẹ icon khi hover */
+}
+
+/* ── Trạng thái Kích hoạt (Active Mode) ── */
+.mode-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(232, 168, 58, 0.15);
+}
+
+.mode-btn.active svg {
+  opacity: 1;
+  color: var(--accent);
+  transform: scale(1.05);
+}
+
+/* ── Tối ưu hóa phản hồi khi Click (Active State) ── */
+.mode-btn:active {
+  transform: scale(0.97);
+}
+
+/* Input nhập số trang */
+#page-input {
+  width: 45px;
+  text-align: center;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 3px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+#page-input:focus { border-color: var(--accent); }
+
+/* Layout chế độ 2 trang */
+.paged-layout {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0px; /* Ghép sát 2 trang */
+  height: 100%;
+  width: 100%;
+}
+
+.paged-layout img {
+  max-width: 100%;
+  max-height: 100vh;
+  object-fit: contain;
+}
+
+/* Khi ở chế độ 2 trang, mỗi ảnh chiếm tối đa 50% */
+.paged-layout.double-page img {
+  max-width: 50%;
+}
+
+/* Đảo chiều hiển thị cho chế độ Manga (Phải sang Trái) */
+.paged-layout.rtl {
+  flex-direction: row-reverse;
 }

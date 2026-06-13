@@ -7,29 +7,35 @@ let currentKey    = '';
 let imgWidth      = 70;
 let pageGap       = 4;
 let pageObserver  = null;
+let scrollCurrentPage = 0; // Trang đang hiển thị ở chế độ cuộn (0-based)
 let readMode      = 'scroll'; // 'scroll' | 'ltr' | 'rtl'
 let currentPage   = 0;        // dùng cho chế độ paged
+let isDoublePage = false;
 
 // ── DOM refs ───────────────────────────────────────────
-const reader          = document.getElementById('reader');
-const pagesContainer  = document.getElementById('pages-container');
-const emptyState      = document.getElementById('empty-state');
-const loadingEl       = document.getElementById('loading');
-const pageIndicator   = document.getElementById('page-indicator');
-const pageIndicatorTx = document.getElementById('page-indicator-text');
-const scrollTopBtn    = document.getElementById('scroll-top');
-const widthSlider     = document.getElementById('width-slider');
-const widthValue      = document.getElementById('width-value');
-const gapSlider       = document.getElementById('gap-slider');
-const gapValue        = document.getElementById('gap-value');
-const infoName        = document.getElementById('info-name');
-const infoPages       = document.getElementById('info-pages');
-const infoCurrent     = document.getElementById('info-current');
-const historyList     = document.getElementById('history-list');
-const pagedNav        = document.getElementById('paged-nav');
-const pagedPageInfo   = document.getElementById('paged-page-info');
-const navPrev         = document.getElementById('nav-prev');
-const navNext         = document.getElementById('nav-next');
+const reader            = document.getElementById('reader');
+const pagesContainer    = document.getElementById('pages-container');
+const emptyState        = document.getElementById('empty-state');
+const loadingEl         = document.getElementById('loading');
+const pageIndicator     = document.getElementById('page-indicator');
+const pageIndicatorTx   = document.getElementById('page-indicator-text');
+const scrollTopBtn      = document.getElementById('scroll-top');
+const widthSlider       = document.getElementById('width-slider');
+const widthValue        = document.getElementById('width-value');
+const gapSlider         = document.getElementById('gap-slider');
+const gapValue          = document.getElementById('gap-value');
+const infoName          = document.getElementById('info-name');
+const infoPages         = document.getElementById('info-pages');
+const infoCurrent       = document.getElementById('info-current');
+const historyList       = document.getElementById('history-list');
+const pagedNav          = document.getElementById('paged-nav');
+const pagedPageInfo     = document.getElementById('paged-page-info');
+const navPrev           = document.getElementById('nav-prev');
+const navNext           = document.getElementById('nav-next');
+const doublePageSetting = document.getElementById('double-page-setting');
+const doublePageToggle  = document.getElementById('double-page-toggle');
+const pageInput         = document.getElementById('page-input');
+const pageTotal         = document.getElementById('page-total');
 
 // ── Init ───────────────────────────────────────────────
 loadAndRenderHistory();
@@ -83,13 +89,9 @@ async function loadFolder(folderPath) {
 }
 
 // ── Render pages ───────────────────────────────────────
-async function renderPages(imageSrcs, name) {
-  currentImages = imageSrcs;
+function buildScrollPages() {
   pagesContainer.innerHTML = '';
-
-  if (pageObserver) pageObserver.disconnect();
-
-  imageSrcs.forEach((src, idx) => {
+  currentImages.forEach((src, idx) => {
     const img = document.createElement('img');
     img.className = 'page-img';
     img.dataset.index = idx;
@@ -99,6 +101,14 @@ async function renderPages(imageSrcs, name) {
     img.src = src;
     pagesContainer.appendChild(img);
   });
+}
+
+async function renderPages(imageSrcs, name) {
+  currentImages = imageSrcs;
+
+  if (pageObserver) pageObserver.disconnect();
+
+  buildScrollPages();
 
   infoName.textContent = name;
   infoPages.textContent = imageSrcs.length;
@@ -114,17 +124,23 @@ async function renderPages(imageSrcs, name) {
   currentPage = 0;
   applyReadMode();
 
-  // Khôi phục tiến độ (chỉ cho chế độ cuộn)
+  // Khôi phục tiến độ
+  const saved = await ipcRenderer.invoke('load-progress', currentKey);
   if (readMode === 'scroll') {
-    const saved = await ipcRenderer.invoke('load-progress', currentKey);
     if (saved && saved.scrollTop) {
       setTimeout(() => { reader.scrollTop = saved.scrollTop; }, 80);
+    }
+  } else {
+    if (saved && typeof saved.page === 'number' && saved.page < currentImages.length) {
+      currentPage = saved.page;
+      renderPaged();
     }
   }
 }
 
 // ── Page observer ──────────────────────────────────────
 function setupPageObserver() {
+  if (pageObserver) pageObserver.disconnect();
   pageObserver = new IntersectionObserver((entries) => {
     let topMost = null;
     entries.forEach(entry => {
@@ -134,6 +150,7 @@ function setupPageObserver() {
       }
     });
     if (topMost !== null) {
+      scrollCurrentPage = topMost;
       const cur = topMost + 1;
       pageIndicatorTx.textContent = cur + ' / ' + currentImages.length;
       infoCurrent.textContent = cur;
@@ -209,6 +226,12 @@ function applyReadMode() {
   const container = pagesContainer;
 
   if (readMode === 'scroll') {
+    // Nếu đang chuyển từ chế độ paged sang, cần dựng lại danh sách ảnh cuộn
+    const comingFromPaged = !!container.querySelector('.paged-layout');
+    if (comingFromPaged || !container.querySelector('.page-img')) {
+      buildScrollPages();
+    }
+
     reader.classList.remove('paged-mode');
     container.style.flexDirection = 'column';
     container.style.alignItems = 'center';
@@ -223,11 +246,33 @@ function applyReadMode() {
       img.style.marginBottom = pageGap + 'px';
     });
     pagedNav.style.display = 'none';
+    doublePageSetting.style.display = 'none';
     pageIndicator.style.display = 'block';
     scrollTopBtn.style.display = reader.scrollTop > 300 ? 'flex' : 'none';
     setupPageObserver();
 
+    // Cuộn tới trang đang đọc (giữ vị trí khi đổi từ chế độ paged)
+    if (comingFromPaged) {
+      const target = pagesContainer.querySelector(`.page-img[data-index="${currentPage}"]`);
+      if (target) {
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ block: 'start' });
+        });
+      }
+      scrollCurrentPage = currentPage;
+    }
+
+    if (currentKey) {
+      ipcRenderer.invoke('save-progress', { key: currentKey, value: { scrollTop: reader.scrollTop, page: scrollCurrentPage } });
+    }
+
   } else {
+    // Nếu đang chuyển từ chế độ cuộn sang, lấy trang đang hiển thị làm trang hiện tại
+    const comingFromScroll = !!container.querySelector('.page-img');
+    if (comingFromScroll) {
+      currentPage = scrollCurrentPage;
+    }
+
     reader.classList.add('paged-mode');
     if (pageObserver) { pageObserver.disconnect(); pageObserver = null; }
     reader.style.overflowY = 'hidden';
@@ -235,50 +280,17 @@ function applyReadMode() {
     pageIndicator.style.display = 'none';
     scrollTopBtn.style.display = 'none';
     pagedNav.style.display = 'flex';
-    showPagedPage(currentPage);
+    doublePageSetting.style.display = 'block';
+    renderPaged(); // renderPaged() tự lưu progress { page: currentPage }
   }
 }
 
-function showPagedPage(idx) {
-  // Clamp index
-  if (readMode === 'rtl') {
-    idx = Math.max(0, Math.min(currentImages.length - 1, idx));
-  } else {
-    idx = Math.max(0, Math.min(currentImages.length - 1, idx));
-  }
-  currentPage = idx;
-
-  document.querySelectorAll('.page-img').forEach((img, i) => {
-    img.style.display = i === currentPage ? 'block' : 'none';
-    img.style.width = imgWidth + '%';
-    img.style.marginBottom = '0';
-    img.style.maxHeight = (reader.clientHeight - 40) + 'px';
-    img.style.objectFit = 'contain';
-  });
-
-  // Update info
-  const display = currentPage + 1;
-  pagedPageInfo.textContent = display + ' / ' + currentImages.length;
-  pageIndicatorTx.textContent = display + ' / ' + currentImages.length;
-  infoCurrent.textContent = display;
-
-  // Cập nhật trạng thái nút điều hướng
-  navPrev.disabled = currentPage === 0;
-  navNext.disabled = currentPage === currentImages.length - 1;
-}
-
-function pagedGoNext() {
-  if (currentPage < currentImages.length - 1) showPagedPage(currentPage + 1);
-}
-function pagedGoPrev() {
-  if (currentPage > 0) showPagedPage(currentPage - 1);
-}
-
+// Điều hướng nút prev/next (đã xử lý hướng rtl trong changePage)
 navNext.addEventListener('click', () => {
-  if (readMode === 'rtl') pagedGoPrev(); else pagedGoNext();
+  readMode === 'rtl' ? changePage('prev') : changePage('next');
 });
 navPrev.addEventListener('click', () => {
-  if (readMode === 'rtl') pagedGoNext(); else pagedGoPrev();
+  readMode === 'rtl' ? changePage('next') : changePage('prev');
 });
 
 // ── Keyboard shortcuts ─────────────────────────────────
@@ -298,13 +310,13 @@ document.addEventListener('keydown', (e) => {
   } else {
     // Paged mode — ArrowLeft/Right + PageUp/Down
     if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-      readMode === 'rtl' ? pagedGoPrev() : pagedGoNext(); e.preventDefault();
+      readMode === 'rtl' ? changePage('prev') : changePage('next'); e.preventDefault();
     }
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-      readMode === 'rtl' ? pagedGoNext() : pagedGoPrev(); e.preventDefault();
+      readMode === 'rtl' ? changePage('next') : changePage('prev'); e.preventDefault();
     }
-    if (e.key === 'Home') { showPagedPage(readMode === 'rtl' ? currentImages.length - 1 : 0); e.preventDefault(); }
-    if (e.key === 'End')  { showPagedPage(readMode === 'rtl' ? 0 : currentImages.length - 1); e.preventDefault(); }
+    if (e.key === 'Home') { currentPage = 0; renderPaged(); e.preventDefault(); }
+    if (e.key === 'End')  { currentPage = currentImages.length - 1; renderPaged(); e.preventDefault(); }
   }
 
   if (e.key === '[') { widthSlider.value = Math.max(30, imgWidth - 5); widthSlider.dispatchEvent(new Event('input')); }
@@ -320,7 +332,24 @@ reader.addEventListener('wheel', (e) => {
   }
 }, { passive: false });
 
-// ── History ────────────────────────────────────────────
+doublePageToggle.addEventListener('change', (e) => {
+  isDoublePage = e.target.checked;
+  // Đảm bảo trang hiện tại luôn là số chẵn (index chẵn) khi xem 2 trang để không bị kẹp ảnh
+  if (isDoublePage && currentPage % 2 !== 0) {
+    currentPage = Math.max(0, currentPage - 1);
+  }
+  renderPaged();
+});
+
+pageInput.addEventListener('change', (e) => {
+  let val = parseInt(e.target.value) - 1; // Chuyển từ hiển thị (1-based) sang index (0-based)
+  if (val >= 0 && val < currentImages.length) {
+    currentPage = isDoublePage ? val - (val % 2) : val; // Tự fix index nếu ở chế độ 2 trang
+    renderPaged();
+  } else {
+    e.target.value = currentPage + 1; // Reset nếu nhập sai phạm vi
+  }
+});
 async function saveToHistory(name) {
   let thumbnail = null;
   try {
@@ -421,6 +450,137 @@ function showLoading() {
   reader.style.display = 'none';
   loadingEl.style.display = 'flex';
 }
+
 function hideLoading() {
   loadingEl.style.display = 'none';
 }
+
+function renderPaged() {
+  pagesContainer.innerHTML = '';
+  if (currentImages.length === 0) return;
+
+  // Clamp currentPage trong giới hạn hợp lệ
+  currentPage = Math.max(0, Math.min(currentImages.length - 1, currentPage));
+
+  const container = document.createElement('div');
+  container.className = 'paged-layout';
+
+  if (readMode === 'rtl') container.classList.add('rtl');
+  if (isDoublePage) container.classList.add('double-page');
+
+  // Render trang đầu tiên
+  const img1 = document.createElement('img');
+  img1.src = currentImages[currentPage];
+  img1.style.maxHeight = (reader.clientHeight - 16) + 'px';
+  container.appendChild(img1);
+
+  // Render trang thứ hai nếu ở chế độ Double Page và chưa hết ảnh
+  let lastIdx = currentPage;
+  if (isDoublePage && currentPage + 1 < currentImages.length) {
+    const img2 = document.createElement('img');
+    img2.src = currentImages[currentPage + 1];
+    img2.style.maxHeight = (reader.clientHeight - 16) + 'px';
+    container.appendChild(img2);
+    lastIdx = currentPage + 1;
+  }
+
+  pagesContainer.appendChild(container);
+
+  // ── Cập nhật UI thông tin trang ──
+  const fromDisp = currentPage + 1;
+  const toDisp = lastIdx + 1;
+  const label = (toDisp > fromDisp) ? `${fromDisp}-${toDisp}` : `${fromDisp}`;
+
+  pageInput.value = fromDisp;
+  pageInput.max = currentImages.length;
+  pageTotal.textContent = ` / ${currentImages.length}`;
+  pagedPageInfo.title = `Trang ${label} / ${currentImages.length}`;
+  pageIndicatorTx.textContent = `${label} / ${currentImages.length}`;
+  infoCurrent.textContent = label;
+
+  // ── Trạng thái nút điều hướng ──
+  const atStart = currentPage === 0;
+  const atEnd = lastIdx >= currentImages.length - 1;
+  if (readMode === 'rtl') {
+    navPrev.disabled = atEnd;
+    navNext.disabled = atStart;
+  } else {
+    navPrev.disabled = atStart;
+    navNext.disabled = atEnd;
+  }
+
+  // Lưu tiến độ đọc (chế độ paged lưu theo số trang)
+  if (currentKey) {
+    ipcRenderer.invoke('save-progress', { key: currentKey, value: { page: currentPage } });
+  }
+}
+
+function changePage(direction) {
+  const step = isDoublePage ? 2 : 1;
+  if (direction === 'next') {
+    if (currentPage + step <= currentImages.length - 1) {
+      currentPage += step;
+    } else if (currentPage < currentImages.length - 1) {
+      currentPage = currentImages.length - 1;
+    } else {
+      return;
+    }
+    renderPaged();
+  } else if (direction === 'prev') {
+    if (currentPage - step >= 0) {
+      currentPage -= step;
+    } else if (currentPage > 0) {
+      currentPage = 0;
+    } else {
+      return;
+    }
+    renderPaged();
+  }
+}
+
+// ── Điều hướng bằng chuột (chế độ ltr/rtl) ─────────────
+// Click vào nửa trái/phải của khung đọc để lùi/tiến trang.
+// Lăn chuột (wheel) cũng đổi trang khi đang ở chế độ paged.
+let mouseDownPos = null;
+
+reader.addEventListener('mousedown', (e) => {
+  if (readMode === 'scroll') return;
+  mouseDownPos = { x: e.clientX, y: e.clientY };
+});
+
+reader.addEventListener('click', (e) => {
+  if (readMode === 'scroll') return;
+  // Bỏ qua nếu người dùng vừa kéo (drag) hoặc click vào nút điều hướng
+  if (e.target.closest('#paged-nav') || e.target.closest('#double-page-setting')) return;
+  if (mouseDownPos) {
+    const dx = Math.abs(e.clientX - mouseDownPos.x);
+    const dy = Math.abs(e.clientY - mouseDownPos.y);
+    if (dx > 6 || dy > 6) { mouseDownPos = null; return; } // đây là kéo, không phải click
+  }
+  mouseDownPos = null;
+
+  const rect = reader.getBoundingClientRect();
+  const isLeftSide = (e.clientX - rect.left) < rect.width / 2;
+
+  if (readMode === 'rtl') {
+    isLeftSide ? changePage('next') : changePage('prev');
+  } else {
+    isLeftSide ? changePage('prev') : changePage('next');
+  }
+});
+
+reader.addEventListener('wheel', (e) => {
+  if (readMode === 'scroll' || e.ctrlKey) return;
+  e.preventDefault();
+  if (e.deltaY > 0 || e.deltaX > 0) {
+    changePage('next');
+  } else if (e.deltaY < 0 || e.deltaX < 0) {
+    changePage('prev');
+  }
+}, { passive: false });
+// ── Resize: cập nhật lại layout paged khi đổi kích thước cửa sổ ──
+window.addEventListener('resize', () => {
+  if (readMode !== 'scroll' && currentImages.length > 0) {
+    renderPaged();
+  }
+});

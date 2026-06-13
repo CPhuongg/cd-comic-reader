@@ -157,14 +157,6 @@ ipcMain.handle('history-remove', (event, key) => {
   return list;
 });
 
-// Xóa 1 bộ khỏi lịch sử theo key
-ipcMain.handle('history-remove', (event, key) => {
-  let list = readHistory();
-  list = list.filter(e => e.key !== key);
-  writeHistory(list);
-  return list;
-});
-
 // Xóa toàn bộ lịch sử
 ipcMain.handle('history-clear', () => {
   writeHistory([]);
