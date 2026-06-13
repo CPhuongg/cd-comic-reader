@@ -1,92 +1,81 @@
 # CD COMIC READER
-Local display images in comic style
 
-**CD Comic Reader** is a lightweight, modern, and minimalist desktop application built to view comic books and manga directly from local image folders or compressed archive files (`.cbz`, `.zip`)[cite: 1, 2]. It is highly optimized to deliver both a fluid continuous vertical scrolling experience (Webtoon/Comic style) and a classic page-by-page layout (Manga style).
-
----
-
-## 🚀 Key Features
-
-### 1. Flexible Reading Modes
-* **Continuous Scroll:** Automatically sequences and aligns images vertically with customizable gaps, offering the perfect layout for Webtoons and modern digital comics.
-* **Paged View (Left-to-Right):** Classic layout that renders one page at a time, moving forward from left to right.
-* **Manga View (Right-to-Left):** Tailored specifically for authentic Japanese Manga, reversing navigation flows to read from right to left.
-
-### 2. Comprehensive Archive & Format Compatibility
-* Parses and extracts **`.cbz`** and **`.zip`** archives entirely on-the-fly directly inside memory buffers, removing any need for manual extraction on your hard drive.
-* Supports all common image extensions natively: `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, and `.bmp`.
-
-### 3. Granular Sidebar Controller & Personalization
-* **Image Width Adjuster:** Real-time slider to dynamic scale comic widths from `30%` to `100%` of the viewing container.
-* **Page Gap Configurator:** Allows users to fine-tune spacing between images from `0px` to `32px` to seamlessly join cut-slices in Webtoons.
-* **Immersive Background Tones:** Features a curated array of view backdrops (Pitch Black, Midnight Blue, Dark Grey, Warm Cream, and Crisp White) designed to prevent eye strain during long reading sessions.
-
-### 4. Smart Session Management & High Performance
-* **Auto-Resume Progress:** Monitors your scroll location and securely caches the exact pixel offset (`scrollTop`) to restore your exact reading position upon re-opening.
-* **Recent History Index:** Maintains an easily accessible list of your last 10 reading sessions, automatically rendering the comic's first page as an interactive thumbnail.
-* **Native Lazy Loading:** Defers out-of-viewport image rendering, safeguarding low RAM usage even when opening massive chapters containing hundreds of pages.
-* **Frameless Aesthetics:** Uses a custom titlebar coupled with drag region support for an sleek, unified application boundary.
+**CD Comic Reader** is a lightweight, minimalist desktop application built with Electron for reading comics and manga from local files or web sources. Supports continuous scrolling and paged layouts across all directions.
 
 ---
 
-## 🛠️ Tech Stack
-* **Runtime Core:** Electron (Node.js & Chromium execution context)
-* **Archive Utility:** `jszip` (asynchronous file extraction directly via buffers) 
-* **Typography:** Syne & Inter (linked directly from Google Fonts)
+## Features
+
+### Reading Modes
+- **Cuộn dọc** — Vertical continuous scroll, ideal for Webtoons
+- **Cuộn ngang L→R** — Horizontal scroll, left to right
+- **Cuộn ngang R→L** — Horizontal scroll, right to left (manga style), starts at page 1 on the right
+- **Trang L→R** — Single/double page, left to right
+- **Trang R→L** — Single/double page, right to left (manga)
+
+### Sources
+- Open `.cbz` / `.zip` archive files
+- Open local image folders (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, `.bmp`)
+- Load chapters directly from web URLs — uses a hidden Chromium window to scrape images with site-specific parsers for NetTruyen, Manganato, TruyenQQ, NhaTruyen, TruyenFull, and a generic fallback
+
+### Library
+- Save any open source (folder, CBZ, or web URL) to a persistent library with one click
+- Open the library as a full-panel grid view with cover thumbnails and entry names
+- Delete individual entries from the library grid (hover to reveal ✕ button)
+- Library data stored in `localStorage` — no extra files written to disk
+
+### Session & History
+- **Auto-resume progress** — saves scroll position or page number per source, restores on reopen
+- **Recent history** — last 10 opened sources with cover thumbnails, stored in `history.json`
+
+### Display Controls
+- Image width slider: 30%–100%
+- Page gap slider: 0px–32px
+- Background presets: Pitch Black, Midnight Blue, Dark Grey, Warm Cream, White
+- Double-page toggle (paged modes)
+- Scroll-to-top button (vertical scroll mode)
 
 ---
 
-## ⌨️ Global Hotkeys & Controls
+## Keyboard Shortcuts
 
-### System Operations
-* `Ctrl + O` : Trigger native dialog to open `.cbz` / `.zip` archive files.
-* `Ctrl + F` : Trigger native directory selector to load local image folders.
-
-### Inside Scroll Mode
-* `ArrowDown` / `PageDown` : Smoothly scroll down the chapter container.
-* `ArrowUp` / `PageUp` : Smoothly scroll up the chapter container.
-* `Home` / `End` : Snap directly to the absolute start or finish of the book.
-
-### Inside Paged & Manga Modes
-* `ArrowRight` / `PageDown` : Step to the next page (Acts as page-backward in Right-to-Left Manga mode).
-* `ArrowLeft` / `PageUp` : Step to the previous page (Acts as page-forward in Right-to-Left Manga mode).
-
-### View Resizing Bindings
-* Phím `[` : Scale down comic width decrementally (`-5%`).
-* Phím `]` : Scale up comic width incrementally (`+5%`).
-* `Ctrl + Mouse Wheel` : Convenient macro to scale page bounds instantly.
+| Keys | Action |
+|------|--------|
+| `Ctrl+O` | Open CBZ/ZIP file |
+| `Ctrl+F` | Open image folder |
+| `ArrowDown` / `PageDown` | Scroll down (vertical scroll mode) |
+| `ArrowUp` / `PageUp` | Scroll up (vertical scroll mode) |
+| `ArrowRight` / `PageDown` | Scroll right / next page (L→R modes) |
+| `ArrowLeft` / `PageUp` | Scroll left / prev page; or next/prev inverted in R→L modes |
+| `Home` / `End` | Jump to first / last page |
+| `[` | Decrease image width by 5% |
+| `]` | Increase image width by 5% |
+| `Ctrl + Wheel` | Resize image width |
 
 ---
 
-## 📦 Installation & Local Deployment
+## Tech Stack
 
-### 1. Resolve Project Dependencies
-Clone this repository to your local directory, open your terminal context inside the root project directory, and execute:
+- **Electron** — main process, IPC, window controls
+- **JSZip** — in-memory CBZ/ZIP extraction
+- **Chromium (hidden BrowserWindow)** — web chapter scraping
+- **localStorage** — library persistence
+- **Inter & Syne** — typography (Google Fonts)
+
+---
+
+## Installation
+
 ```bash
 npm install
-
-```
-
-### 2. Initiate App in Developer Sandbox
-
-Run the sandbox framework using Electron's lifecycle management script:
-
-```bash
 npm start
-
 ```
 
-### 3. Architecture Blueprint Overview
+## Project Structure
 
-* `index.html`: Defines the layout tree comprising the custom app titlebar, setting toggles inside the sidebar panel, and the view presentation stage.
-
-
-* `renderer.js`: Orchestrates UI reactivity, captures global hotkey events, fires asynchronous queries, and runs the intersection observers to track current pages.
-
-
-* `style.css`: Establishes modular design tokens (`:root`), controls smooth UI transition animations, and isolates structural layouts for fluid scrolling boundaries.
-
-
-* `main.js`: Directs Electron main lifecycle processes, handles frame-hidden window instantiations, establishes secure IPC bridges for secure I/O operations, and commits reading metrics to local `.json` stores.
-
-
+| File | Role |
+|------|------|
+| `src/main.js` | Electron main process — window creation, IPC handlers (file dialogs, image reading, thumbnails, history/progress JSON, web scraping) |
+| `src/index.html` | App layout — titlebar, sidebar, reader area, library panel, URL modal |
+| `src/renderer.js` | UI logic — reading modes, library, history, scroll/page navigation, keyboard/mouse events |
+| `src/style.css` | Styles — CSS custom properties, dark theme, library grid, reader layouts |
