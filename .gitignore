@@ -1,0 +1,20 @@
+# Thư mục chứa các dependency cài đặt qua npm/yarn
+node_modules/
+
+# Các file log khi chạy hoặc gặp lỗi
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Thư mục build đầu ra (áp dụng nếu bạn đóng gói Electron hoặc build frontend)
+dist/
+build/
+out/
+
+# Các file cấu hình môi trường chứa thông tin nhạy cảm (mật khẩu, API key)
+.env
+.env.local
+
+# Các file hệ thống tự sinh không cần thiết
+.DS_Store
+Thumbs.db

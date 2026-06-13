@@ -1,0 +1,28 @@
+{
+  "name": "cd-comic-reader",
+  "version": "1.0.0",
+  "description": "CD Comic Reader - Manga & Comic Reader for Windows",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  },
+  "build": {
+    "appId": "com.cd.comicreader",
+    "productName": "CD Comic Reader",
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
