@@ -8,7 +8,7 @@ let imgWidth      = 70;
 let pageGap       = 4;
 let pageObserver  = null;
 let scrollCurrentPage = 0; // Trang đang hiển thị ở chế độ cuộn (0-based)
-let readMode      = 'scroll'; // 'scroll' | 'ltr' | 'rtl'
+let readMode      = 'scroll'; // 'scroll' | 'scroll-ltr' | 'scroll-rtl' | 'ltr' | 'rtl'
 let currentPage   = 0;        // dùng cho chế độ paged
 let isDoublePage = false;
 
@@ -28,11 +28,14 @@ const infoName          = document.getElementById('info-name');
 const infoPages         = document.getElementById('info-pages');
 const infoCurrent       = document.getElementById('info-current');
 const historyList       = document.getElementById('history-list');
-const pagedNav          = document.getElementById('paged-nav');
-const pagedPageInfo     = document.getElementById('paged-page-info');
+const sidebarPagedNav   = document.getElementById('sidebar-paged-nav');
+const sidebarScrollNav  = document.getElementById('sidebar-scroll-nav');
+const scrollNavPrev     = document.getElementById('scroll-nav-prev');
+const scrollNavNext     = document.getElementById('scroll-nav-next');
+const scrollPageDisplay = document.getElementById('scroll-page-display');
+const scrollPageTotal   = document.getElementById('scroll-page-total');
 const navPrev           = document.getElementById('nav-prev');
 const navNext           = document.getElementById('nav-next');
-const doublePageSetting = document.getElementById('double-page-setting');
 const doublePageToggle  = document.getElementById('double-page-toggle');
 const pageInput         = document.getElementById('page-input');
 const pageTotal         = document.getElementById('page-total');
@@ -113,6 +116,7 @@ async function renderPages(imageSrcs, name) {
   infoName.textContent = name;
   infoPages.textContent = imageSrcs.length;
   infoName.title = name;
+  scrollPageTotal.textContent = ' / ' + imageSrcs.length;
 
   await saveToHistory(name);
   await loadAndRenderHistory();
@@ -126,9 +130,12 @@ async function renderPages(imageSrcs, name) {
 
   // Khôi phục tiến độ
   const saved = await ipcRenderer.invoke('load-progress', currentKey);
-  if (readMode === 'scroll') {
-    if (saved && saved.scrollTop) {
-      setTimeout(() => { reader.scrollTop = saved.scrollTop; }, 80);
+  if (isScrollMode()) {
+    if (saved) {
+      setTimeout(() => {
+        if (saved.scrollTop) reader.scrollTop = saved.scrollTop;
+        if (saved.scrollLeft) reader.scrollLeft = saved.scrollLeft;
+      }, 80);
     }
   } else {
     if (saved && typeof saved.page === 'number' && saved.page < currentImages.length) {
@@ -139,7 +146,7 @@ async function renderPages(imageSrcs, name) {
 }
 
 // ── Page observer ──────────────────────────────────────
-function setupPageObserver() {
+function setupPageObserver(horizontal = false) {
   if (pageObserver) pageObserver.disconnect();
   pageObserver = new IntersectionObserver((entries) => {
     let topMost = null;
@@ -154,8 +161,9 @@ function setupPageObserver() {
       const cur = topMost + 1;
       pageIndicatorTx.textContent = cur + ' / ' + currentImages.length;
       infoCurrent.textContent = cur;
+      if (isScrollMode()) updateScrollNavUI();
     }
-  }, { root: reader, threshold: 0.1 });
+  }, { root: reader, threshold: 0.3 });
 
   document.querySelectorAll('.page-img').forEach(img => pageObserver.observe(img));
 }
@@ -168,11 +176,13 @@ reader.addEventListener('scroll', () => {
     if (currentKey) {
       ipcRenderer.invoke('save-progress', {
         key: currentKey,
-        value: { scrollTop: reader.scrollTop }
+        value: { scrollTop: reader.scrollTop, scrollLeft: reader.scrollLeft }
       });
     }
   }, 800);
-  scrollTopBtn.style.display = reader.scrollTop > 300 ? 'flex' : 'none';
+  if (readMode === 'scroll') {
+    scrollTopBtn.style.display = reader.scrollTop > 300 ? 'flex' : 'none';
+  }
 });
 
 // ── Scroll to top ──────────────────────────────────────
@@ -184,9 +194,11 @@ scrollTopBtn.addEventListener('click', () => {
 widthSlider.addEventListener('input', () => {
   imgWidth = parseInt(widthSlider.value);
   widthValue.textContent = imgWidth + '%';
-  document.querySelectorAll('.page-img').forEach(img => {
-    img.style.width = imgWidth + '%';
-  });
+  if (readMode === 'scroll') {
+    document.querySelectorAll('.page-img').forEach(img => {
+      img.style.width = imgWidth + '%';
+    });
+  }
 });
 
 // ── Gap slider ─────────────────────────────────────────
@@ -221,11 +233,16 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
   });
 });
 
+// Helper: kiểm tra chế độ cuộn (dọc hoặc ngang)
+function isScrollMode() {
+  return readMode === 'scroll' || readMode === 'scroll-ltr' || readMode === 'scroll-rtl';
+}
+
 // Áp dụng chế độ đọc lên ảnh đang hiển thị
 function applyReadMode() {
   const container = pagesContainer;
 
-  if (readMode === 'scroll') {
+  if (isScrollMode()) {
     // Nếu đang chuyển từ chế độ paged sang, cần dựng lại danh sách ảnh cuộn
     const comingFromPaged = !!container.querySelector('.paged-layout');
     if (comingFromPaged || !container.querySelector('.page-img')) {
@@ -233,30 +250,66 @@ function applyReadMode() {
     }
 
     reader.classList.remove('paged-mode');
-    container.style.flexDirection = 'column';
-    container.style.alignItems = 'center';
-    container.style.justifyContent = '';
-    reader.style.overflowY = 'scroll';
-    reader.style.overflowX = 'hidden';
-    document.querySelectorAll('.page-img').forEach(img => {
-      img.style.display = 'block';
-      img.style.width = imgWidth + '%';
-      img.style.maxHeight = '';
-      img.style.objectFit = '';
-      img.style.marginBottom = pageGap + 'px';
-    });
-    pagedNav.style.display = 'none';
-    doublePageSetting.style.display = 'none';
+
+    if (readMode === 'scroll') {
+      // Cuộn dọc
+      container.style.flexDirection = 'column';
+      container.style.alignItems = 'center';
+      container.style.justifyContent = 'flex-start';
+      container.style.padding = '20px 0 60px';
+      container.style.minWidth = '';
+      container.style.height = '';
+      reader.style.overflowY = 'scroll';
+      reader.style.overflowX = 'hidden';
+      document.querySelectorAll('.page-img').forEach(img => {
+        img.style.display = 'block';
+        img.style.width = imgWidth + '%';
+        img.style.height = 'auto';
+        img.style.maxHeight = '';
+        img.style.objectFit = '';
+        img.style.marginBottom = pageGap + 'px';
+        img.style.marginRight = '';
+        img.style.flexShrink = '';
+      });
+    } else {
+      // Cuộn ngang (scroll-ltr hoặc scroll-rtl)
+      container.style.flexDirection = readMode === 'scroll-rtl' ? 'row-reverse' : 'row';
+      container.style.alignItems = 'center';
+      container.style.justifyContent = 'flex-start';
+      container.style.padding = '8px 40px';
+      container.style.minWidth = 'max-content';
+      container.style.height = '100%';
+      reader.style.overflowY = 'hidden';
+      reader.style.overflowX = 'scroll';
+      document.querySelectorAll('.page-img').forEach(img => {
+        img.style.display = 'block';
+        img.style.width = 'auto';
+        img.style.height = (reader.clientHeight - 16) + 'px';
+        img.style.maxHeight = '100%';
+        img.style.objectFit = 'contain';
+        img.style.marginBottom = '';
+        img.style.marginRight = pageGap + 'px';
+        img.style.flexShrink = '0';
+      });
+    }
+
+    sidebarPagedNav.style.display = 'none';
+    sidebarScrollNav.style.display = 'block';
     pageIndicator.style.display = 'block';
-    scrollTopBtn.style.display = reader.scrollTop > 300 ? 'flex' : 'none';
-    setupPageObserver();
+    scrollTopBtn.style.display = readMode === 'scroll' && reader.scrollTop > 300 ? 'flex' : 'none';
+    updateScrollNavUI();
+    setupPageObserver(readMode !== 'scroll');
 
     // Cuộn tới trang đang đọc (giữ vị trí khi đổi từ chế độ paged)
     if (comingFromPaged) {
       const target = pagesContainer.querySelector(`.page-img[data-index="${currentPage}"]`);
       if (target) {
         requestAnimationFrame(() => {
-          target.scrollIntoView({ block: 'start' });
+          if (readMode === 'scroll') {
+            target.scrollIntoView({ block: 'start' });
+          } else {
+            target.scrollIntoView({ inline: 'start' });
+          }
         });
       }
       scrollCurrentPage = currentPage;
@@ -267,7 +320,7 @@ function applyReadMode() {
     }
 
   } else {
-    // Nếu đang chuyển từ chế độ cuộn sang, lấy trang đang hiển thị làm trang hiện tại
+    // Chế độ trang (ltr / rtl)
     const comingFromScroll = !!container.querySelector('.page-img');
     if (comingFromScroll) {
       currentPage = scrollCurrentPage;
@@ -279,9 +332,9 @@ function applyReadMode() {
     reader.style.overflowX = 'hidden';
     pageIndicator.style.display = 'none';
     scrollTopBtn.style.display = 'none';
-    pagedNav.style.display = 'flex';
-    doublePageSetting.style.display = 'block';
-    renderPaged(); // renderPaged() tự lưu progress { page: currentPage }
+    sidebarPagedNav.style.display = 'block';
+    sidebarScrollNav.style.display = 'none';
+    renderPaged();
   }
 }
 
@@ -307,6 +360,24 @@ document.addEventListener('keydown', (e) => {
     }
     if (e.key === 'Home') { reader.scrollTo({ top: 0, behavior: 'smooth' }); e.preventDefault(); }
     if (e.key === 'End')  { reader.scrollTo({ top: reader.scrollHeight, behavior: 'smooth' }); e.preventDefault(); }
+  } else if (readMode === 'scroll-ltr') {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+      reader.scrollBy({ left: reader.clientWidth * 0.9, behavior: 'smooth' }); e.preventDefault();
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      reader.scrollBy({ left: -reader.clientWidth * 0.9, behavior: 'smooth' }); e.preventDefault();
+    }
+    if (e.key === 'Home') { reader.scrollTo({ left: 0, behavior: 'smooth' }); e.preventDefault(); }
+    if (e.key === 'End')  { reader.scrollTo({ left: reader.scrollWidth, behavior: 'smooth' }); e.preventDefault(); }
+  } else if (readMode === 'scroll-rtl') {
+    if (e.key === 'ArrowLeft' || e.key === 'PageDown') {
+      reader.scrollBy({ left: reader.clientWidth * 0.9, behavior: 'smooth' }); e.preventDefault();
+    }
+    if (e.key === 'ArrowRight' || e.key === 'PageUp') {
+      reader.scrollBy({ left: -reader.clientWidth * 0.9, behavior: 'smooth' }); e.preventDefault();
+    }
+    if (e.key === 'Home') { reader.scrollTo({ left: 0, behavior: 'smooth' }); e.preventDefault(); }
+    if (e.key === 'End')  { reader.scrollTo({ left: reader.scrollWidth, behavior: 'smooth' }); e.preventDefault(); }
   } else {
     // Paged mode — ArrowLeft/Right + PageUp/Down
     if (e.key === 'ArrowRight' || e.key === 'PageDown') {
@@ -544,18 +615,17 @@ function changePage(direction) {
 let mouseDownPos = null;
 
 reader.addEventListener('mousedown', (e) => {
-  if (readMode === 'scroll') return;
+  if (isScrollMode()) return;
   mouseDownPos = { x: e.clientX, y: e.clientY };
 });
 
 reader.addEventListener('click', (e) => {
-  if (readMode === 'scroll') return;
-  // Bỏ qua nếu người dùng vừa kéo (drag) hoặc click vào nút điều hướng
-  if (e.target.closest('#paged-nav') || e.target.closest('#double-page-setting')) return;
+  if (isScrollMode()) return;
+  if (e.target.closest('#sidebar-paged-nav')) return;
   if (mouseDownPos) {
     const dx = Math.abs(e.clientX - mouseDownPos.x);
     const dy = Math.abs(e.clientY - mouseDownPos.y);
-    if (dx > 6 || dy > 6) { mouseDownPos = null; return; } // đây là kéo, không phải click
+    if (dx > 6 || dy > 6) { mouseDownPos = null; return; }
   }
   mouseDownPos = null;
 
@@ -570,17 +640,60 @@ reader.addEventListener('click', (e) => {
 });
 
 reader.addEventListener('wheel', (e) => {
-  if (readMode === 'scroll' || e.ctrlKey) return;
-  e.preventDefault();
-  if (e.deltaY > 0 || e.deltaX > 0) {
-    changePage('next');
-  } else if (e.deltaY < 0 || e.deltaX < 0) {
-    changePage('prev');
+  if (e.ctrlKey) return; // zoom handled elsewhere
+  // Chế độ paged: wheel đổi trang
+  if (!isScrollMode()) {
+    e.preventDefault();
+    if (e.deltaY > 0 || e.deltaX > 0) changePage('next');
+    else if (e.deltaY < 0 || e.deltaX < 0) changePage('prev');
+    return;
+  }
+  // Chế độ cuộn ngang: deltaY chuyển thành scrollLeft smooth
+  if (readMode === 'scroll-ltr' || readMode === 'scroll-rtl') {
+    if (e.deltaY !== 0 && e.deltaX === 0) {
+      e.preventDefault();
+      reader.scrollBy({ left: e.deltaY * 2.5, behavior: 'smooth' });
+    }
   }
 }, { passive: false });
+// ── Scroll navigation helpers ──────────────────────────
+function updateScrollNavUI() {
+  const total = currentImages.length;
+  const cur = scrollCurrentPage + 1;
+  scrollPageDisplay.textContent = cur;
+  scrollPageTotal.textContent = ' / ' + total;
+  scrollNavPrev.disabled = scrollCurrentPage <= 0;
+  scrollNavNext.disabled = scrollCurrentPage >= total - 1;
+}
+
+function scrollToPageIndex(idx) {
+  const target = pagesContainer.querySelector(`.page-img[data-index="${idx}"]`);
+  if (!target) return;
+  if (readMode === 'scroll') {
+    reader.scrollTo({ top: target.offsetTop - 8, behavior: 'smooth' });
+  } else {
+    reader.scrollTo({ left: target.offsetLeft - 8, behavior: 'smooth' });
+  }
+}
+
+scrollNavPrev.addEventListener('click', () => {
+  const newIdx = Math.max(0, scrollCurrentPage - 1);
+  scrollToPageIndex(newIdx);
+});
+scrollNavNext.addEventListener('click', () => {
+  const newIdx = Math.min(currentImages.length - 1, scrollCurrentPage + 1);
+  scrollToPageIndex(newIdx);
+});
+
 // ── Resize: cập nhật lại layout paged khi đổi kích thước cửa sổ ──
 window.addEventListener('resize', () => {
-  if (readMode !== 'scroll' && currentImages.length > 0) {
+  if (currentImages.length === 0) return;
+  if (!isScrollMode()) {
     renderPaged();
+  } else if (readMode === 'scroll-ltr' || readMode === 'scroll-rtl') {
+    // Cập nhật lại chiều cao ảnh khi resize
+    document.querySelectorAll('.page-img').forEach(img => {
+      img.style.height = (reader.clientHeight - 16) + 'px';
+    });
   }
 });

@@ -61,14 +61,66 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
         Cuộn dọc
       </button>
-      <button class="mode-btn" data-mode="ltr" title="Trái sang phải">
+      <button class="mode-btn" data-mode="scroll-ltr" title="Cuộn ngang trái → phải">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        Trái → Phải
+        Cuộn ngang L→R
       </button>
-      <button class="mode-btn" data-mode="rtl" title="Phải sang trái (manga)">
+      <button class="mode-btn" data-mode="scroll-rtl" title="Cuộn ngang phải → trái (manga)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 5 5 12 12 19"/></svg>
-        Phải → Trái
+        Cuộn ngang R→L
       </button>
+      <button class="mode-btn" data-mode="ltr" title="Trang đơn trái → phải">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="7" height="14" rx="1"/><rect x="14" y="5" width="7" height="14" rx="1"/><polyline points="12 9 15 12 12 15"/></svg>
+        Trang L→R
+      </button>
+      <button class="mode-btn" data-mode="rtl" title="Trang đơn phải → trái (manga)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="7" height="14" rx="1"/><rect x="14" y="5" width="7" height="14" rx="1"/><polyline points="12 9 9 12 12 15"/></svg>
+        Trang R→L
+      </button>
+    </div>
+  </div>
+
+  <!-- Điều hướng cuộn (hiển thị khi ở chế độ scroll) -->
+  <div id="sidebar-scroll-nav" style="display:none;">
+    <div class="sidebar-section-label" style="margin-top:1rem;">Điều hướng</div>
+    <div id="sidebar-scroll-controls">
+      <button id="scroll-nav-prev" title="Trang trước">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Trang trước
+      </button>
+      <div id="sidebar-scroll-page-row">
+        <span id="scroll-page-display">1</span>
+        <span id="scroll-page-total"> / 1</span>
+      </div>
+      <button id="scroll-nav-next" title="Trang sau">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        Trang sau
+      </button>
+    </div>
+  </div>
+
+  <!-- Điều hướng trang (hiển thị khi ở chế độ paged) -->
+  <div id="sidebar-paged-nav" style="display:none;">
+    <div class="sidebar-section-label" style="margin-top:1rem;">Điều hướng trang</div>
+    <div id="sidebar-page-controls">
+      <button id="nav-prev" title="Trang trước">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Trang trước
+      </button>
+      <div id="sidebar-page-input-row">
+        <input type="number" id="page-input" min="1" value="1" title="Nhập số trang và nhấn Enter">
+        <span id="page-total"> / 1</span>
+      </div>
+      <button id="nav-next" title="Trang sau">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        Trang sau
+      </button>
+    </div>
+    <div id="sidebar-double-page" style="margin-top:8px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:11px; cursor:pointer; color:var(--text-secondary);">
+        <input type="checkbox" id="double-page-toggle">
+        Hiển thị 2 trang
+      </label>
     </div>
   </div>
 
@@ -119,26 +171,6 @@
 
   <div id="reader" style="display:none;">
     <div id="pages-container"></div>
-  </div>
-
-  <div id="paged-nav" style="display:none;">
-    <button id="nav-prev" title="Trang trước">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <div id="paged-page-info">
-      <input type="number" id="page-input" min="1" value="1" title="Nhập số trang và nhấn Enter">
-      <span id="page-total"> / 1</span>
-    </div>
-    <button id="nav-next" title="Trang sau">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-  </div>
-
-  <div class="setting-group" id="double-page-setting" style="display: none; margin-top: 15px;">
-    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--text-primary);">
-      <input type="checkbox" id="double-page-toggle">
-      Hiển thị 2 trang (Double Page)
-    </label>
   </div>
 
   <div id="loading" style="display:none;">

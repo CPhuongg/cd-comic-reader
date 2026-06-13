@@ -314,50 +314,41 @@ body {
 #reader.paged-mode { cursor: pointer; }
 #reader.paged-mode #paged-nav,
 #reader.paged-mode .setting-group { cursor: default; }
-/* ── Thanh điều hướng trang (paged mode) ── */
-#paged-nav {
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
-  align-items: center;
-  gap: 14px;
-  background: rgba(10,10,10,0.85);
-  border: 1px solid #2a2a2a;
-  border-radius: 24px;
-  padding: 6px 16px;
-  backdrop-filter: blur(6px);
+/* ── Sidebar paged navigation ── */
+#sidebar-page-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
-#paged-nav button {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
+#sidebar-page-controls button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 4px;
+  gap: 7px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
   border-radius: 6px;
-  transition: background 0.15s, color 0.15s;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  width: 100%;
 }
-#paged-nav button:hover { background: var(--accent-dim); color: var(--accent); }
-#paged-nav button:disabled { opacity: 0.3; cursor: default; }
-#paged-nav button:disabled:hover { background: none; color: var(--text-secondary); }
+#sidebar-page-controls button:hover { background: var(--btn-hover); color: var(--text-primary); border-color: #3a3a3a; }
+#sidebar-page-controls button:disabled { opacity: 0.3; cursor: default; }
+#sidebar-page-controls button:disabled:hover { background: var(--btn-bg); color: var(--text-secondary); border-color: var(--btn-border); }
 
-/* ── Bật/tắt hiển thị 2 trang (paged mode) ── */
-#double-page-setting {
-  position: fixed;
-  bottom: 16px;
-  left: calc(var(--sidebar-w) + 16px);
-  z-index: 20;
-  margin-top: 0 !important;
-  background: rgba(10,10,10,0.85);
-  border: 1px solid #2a2a2a;
-  border-radius: 20px;
-  padding: 6px 14px;
-  backdrop-filter: blur(6px);
+#sidebar-page-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
 }
+#sidebar-page-input-row span { font-size: 11px; color: var(--text-muted); }
 
 #pages-container { display: flex; flex-direction: column; align-items: center; padding: 20px 0 60px; gap: 4px; min-height: 100%; }
 .page-img { display: block; width: 70%; height: auto; image-rendering: -webkit-optimize-contrast; transition: width 0.2s ease; }
@@ -400,40 +391,77 @@ body {
   opacity: 1;
 }
 
-/* ── Read mode buttons container ── */
-#read-mode-options {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 4px 0; /* Khoảng cách giữa các nút */
-  margin-top: 5px;
+/* ── Scroll navigation (dọc/ngang) ── */
+#sidebar-scroll-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
-
-/* ── Base style cho từng nút chế độ ── */
-.mode-btn {
-  display: table-cell;
-  vertical-align: middle;
-  text-align: center;
-  height: 32px;
+#sidebar-scroll-controls button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 10.5px;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  width: 100%;
+}
+#sidebar-scroll-controls button:hover { background: var(--btn-hover); color: var(--text-primary); border-color: #3a3a3a; }
+#sidebar-scroll-controls button:disabled { opacity: 0.3; cursor: default; }
+#sidebar-scroll-controls button:disabled:hover { background: var(--btn-bg); color: var(--text-secondary); border-color: var(--btn-border); }
+
+#sidebar-scroll-page-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 10px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+}
+#scroll-page-display { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 600; }
+#scroll-page-total { font-size: 11px; color: var(--text-muted); }
+
+/* ── Read mode buttons container ── */
+#read-mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 5px;
+  width: 100%;
+}
+
+/* ── Base style cho từng nút chế độ ── */
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 11px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.18s ease;
-  padding: 0 4px;
+  padding: 0 10px;
+  text-align: left;
 }
 
-/* Hiển thị Icon SVG bên trong nút */
 .mode-btn svg {
-  display: block;
-  margin: 0 auto 3px auto; /* Đẩy icon lên trên text một chút */
+  flex-shrink: 0;
   opacity: 0.6;
-  transition: transform 0.18s ease, opacity 0.18s ease;
+  transition: opacity 0.18s ease;
 }
 
 /* ── Hiệu ứng Hover ── */
@@ -442,11 +470,7 @@ body {
   color: var(--text-primary);
   border-color: #3a3a3a;
 }
-
-.mode-btn:hover svg {
-  opacity: 0.9;
-  transform: translateY(-1px); /* Nhấc nhẹ icon khi hover */
-}
+.mode-btn:hover svg { opacity: 0.9; }
 
 /* ── Trạng thái Kích hoạt (Active Mode) ── */
 .mode-btn.active {
@@ -454,34 +478,26 @@ body {
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
-  box-shadow: 0 0 8px rgba(232, 168, 58, 0.15);
+  box-shadow: 0 0 8px rgba(232, 168, 58, 0.1);
 }
+.mode-btn.active svg { opacity: 1; }
 
-.mode-btn.active svg {
-  opacity: 1;
-  color: var(--accent);
-  transform: scale(1.05);
-}
-
-/* ── Tối ưu hóa phản hồi khi Click (Active State) ── */
-.mode-btn:active {
-  transform: scale(0.97);
-}
+/* ── Click feedback ── */
+.mode-btn:active { transform: scale(0.98); }
 
 /* Input nhập số trang */
 #page-input {
-  width: 45px;
+  width: 42px;
   text-align: center;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
+  background: transparent;
+  border: none;
   color: var(--text-primary);
-  border-radius: 4px;
-  padding: 3px;
+  padding: 0;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 11px;
   outline: none;
 }
-#page-input:focus { border-color: var(--accent); }
+#page-input:focus { color: var(--accent); }
 
 /* Layout chế độ 2 trang */
 .paged-layout {
