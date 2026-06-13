@@ -162,3 +162,159 @@ ipcMain.handle('history-clear', () => {
   writeHistory([]);
   return [];
 });
+
+// ── Web chapter scraper ────────────────────────────────
+// Dùng BrowserWindow ẩn để load trang web như browser thật,
+// rồi inject script phát hiện ảnh chapter.
+ipcMain.handle('fetch-web-chapter', async (event, url) => {
+  return new Promise((resolve, reject) => {
+    const win = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        webSecurity: false,
+        images: true,
+      }
+    });
+
+    // Timeout 25 giây
+    const timeout = setTimeout(() => {
+      try { win.destroy(); } catch {}
+      reject(new Error('Timeout: trang web mất quá nhiều thời gian tải'));
+    }, 25000);
+
+    win.webContents.on('did-finish-load', async () => {
+      // Chờ thêm 1.5s để JS của trang chạy xong (lazy load, etc.)
+      setTimeout(async () => {
+        try {
+          const result = await win.webContents.executeJavaScript(`
+            (function() {
+              const pageUrl = location.href;
+              const hostname = location.hostname;
+
+              // ── Parser cho từng trang phổ biến ──────────────────
+              // NetTruyen / TruyenQQ / các site dùng cấu trúc tương tự
+              function parseNetTruyen() {
+                const imgs = document.querySelectorAll(
+                  '.reading-detail img, .page-chapter img, #chapter-content img, .chapter-content img, .box_doc img'
+                );
+                return [...imgs].map(img => img.getAttribute('data-src') || img.getAttribute('data-original') || img.src)
+                  .filter(s => s && !s.includes('data:') && s.length > 10);
+              }
+
+              // Manganato / Readmanganato
+              function parseManganato() {
+                const imgs = document.querySelectorAll('.container-chapter-reader img, .panel-read-story img');
+                return [...imgs].map(img => img.src).filter(s => s && !s.includes('data:') && s.length > 10);
+              }
+
+              // MangaDex (dùng API riêng nên fallback sang generic)
+              // TruyenFull / MangaVN
+              function parseTruyenFull() {
+                const imgs = document.querySelectorAll('#chapter-content img, .chapter-content img');
+                return [...imgs].map(img => img.getAttribute('data-src') || img.src)
+                  .filter(s => s && !s.includes('data:') && s.length > 10);
+              }
+
+              // Nhattruyenme / NhatTruyen
+              function parseNhatTruyen() {
+                const imgs = document.querySelectorAll('.reading-detail .page-chapter img');
+                return [...imgs].map(img => img.getAttribute('data-original') || img.getAttribute('data-src') || img.src)
+                  .filter(s => s && !s.includes('data:') && s.length > 10);
+              }
+
+              // ── Generic fallback: tìm tất cả ảnh lớn trên trang ──
+              function parseGeneric() {
+                const allImgs = [...document.querySelectorAll('img')];
+                // Lọc ảnh lớn (có thể là trang truyện), bỏ qua icon/avatar/logo
+                const candidates = allImgs.filter(img => {
+                  const src = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-lazy-src') || img.src || '';
+                  if (!src || src.startsWith('data:') || src.length < 10) return false;
+                  // Bỏ ảnh nhỏ theo kích thước thực tế
+                  const w = img.naturalWidth || img.width || img.clientWidth || 0;
+                  const h = img.naturalHeight || img.height || img.clientHeight || 0;
+                  if (w > 0 && w < 100) return false;
+                  if (h > 0 && h < 150) return false;
+                  // Bỏ url chứa từ khoá icon/logo/avatar/banner/ads
+                  const low = src.toLowerCase();
+                  if (/logo|icon|avatar|banner|favicon|sprite|ads|advertisement|thumb(?!nail)|btn|button/.test(low)) return false;
+                  return true;
+                });
+
+                // Lấy src ưu tiên data-src (lazy load)
+                const srcs = candidates.map(img =>
+                  img.getAttribute('data-src') ||
+                  img.getAttribute('data-original') ||
+                  img.getAttribute('data-lazy-src') ||
+                  img.getAttribute('data-img') ||
+                  img.src
+                ).filter(Boolean);
+
+                // Deduplicate
+                return [...new Set(srcs)];
+              }
+
+              // ── Chọn parser theo hostname ──
+              let images = [];
+              if (/nettruyen|truyenqq|truyenfull|mangavn|doctruyen|blogtruyen/.test(hostname)) {
+                images = parseNetTruyen();
+              } else if (/manganato|readmanganato|chapmanganato/.test(hostname)) {
+                images = parseManganato();
+              } else if (/nhattruyen|nhattruyenme/.test(hostname)) {
+                images = parseNhatTruyen();
+              } else if (/truyenfull/.test(hostname)) {
+                images = parseTruyenFull();
+              }
+
+              // Nếu parser cụ thể không ra ảnh → dùng generic
+              if (images.length < 2) {
+                images = parseGeneric();
+              }
+
+              // Lấy tiêu đề chapter
+              const titleEl = document.querySelector(
+                'h1.chapter-title, h1.title, .chapter-info h1, .chapter-info h2, ' +
+                'title, h1, h2.chapter-name, .chapter-name'
+              );
+              const title = titleEl ? (titleEl.innerText || titleEl.textContent).trim().slice(0, 120) : document.title.slice(0, 120);
+
+              return { images, title, url: pageUrl, hostname };
+            })()
+          `);
+
+          clearTimeout(timeout);
+          win.destroy();
+
+          if (!result.images || result.images.length === 0) {
+            reject(new Error('Không tìm thấy ảnh truyện trên trang này.\nThử kiểm tra lại URL hoặc trang web có thể không được hỗ trợ.'));
+            return;
+          }
+
+          resolve(result);
+        } catch (err) {
+          clearTimeout(timeout);
+          try { win.destroy(); } catch {}
+          reject(err);
+        }
+      }, 1500);
+    });
+
+    win.webContents.on('did-fail-load', (event, code, desc) => {
+      clearTimeout(timeout);
+      try { win.destroy(); } catch {}
+      reject(new Error(`Không thể tải trang: ${desc} (mã ${code})`));
+    });
+
+    // Set User-Agent như Chrome thật để tránh bị chặn
+    win.webContents.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    );
+
+    win.loadURL(url).catch(err => {
+      clearTimeout(timeout);
+      try { win.destroy(); } catch {}
+      reject(err);
+    });
+  });
+});

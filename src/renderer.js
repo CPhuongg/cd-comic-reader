@@ -43,6 +43,83 @@ const pageTotal         = document.getElementById('page-total');
 // ── Init ───────────────────────────────────────────────
 loadAndRenderHistory();
 
+// ── URL Modal ──────────────────────────────────────────
+const urlModalOverlay = document.getElementById('url-modal-overlay');
+const urlInput        = document.getElementById('url-input');
+const urlStatus       = document.getElementById('url-status');
+const urlLoadBtn      = document.getElementById('url-load-btn');
+const urlCancelBtn    = document.getElementById('url-cancel-btn');
+const urlModalClose   = document.getElementById('url-modal-close');
+const urlPasteBtn     = document.getElementById('url-paste-btn');
+
+function openUrlModal() {
+  urlModalOverlay.style.display = 'flex';
+  setUrlStatus('', '');
+  urlLoadBtn.disabled = false;
+  setTimeout(() => urlInput.focus(), 80);
+}
+function closeUrlModal() {
+  urlModalOverlay.style.display = 'none';
+  urlInput.value = '';
+  setUrlStatus('', '');
+  urlLoadBtn.disabled = false;
+}
+function setUrlStatus(type, msg) {
+  if (!type || !msg) { urlStatus.style.display = 'none'; return; }
+  urlStatus.style.display = 'flex';
+  urlStatus.className = 'url-status ' + type;
+  if (type === 'loading') {
+    urlStatus.innerHTML = `<span class="status-spinner"></span><span>${msg}</span>`;
+  } else {
+    const icon = type === 'error' ? '✕' : '✓';
+    urlStatus.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  }
+}
+
+document.getElementById('btn-open-url').addEventListener('click', openUrlModal);
+urlModalClose.addEventListener('click', closeUrlModal);
+urlCancelBtn.addEventListener('click', closeUrlModal);
+urlModalOverlay.addEventListener('click', (e) => { if (e.target === urlModalOverlay) closeUrlModal(); });
+
+urlPasteBtn.addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    urlInput.value = text.trim();
+    urlInput.focus();
+  } catch {}
+});
+
+urlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') urlLoadBtn.click();
+  if (e.key === 'Escape') closeUrlModal();
+});
+
+urlLoadBtn.addEventListener('click', async () => {
+  const url = urlInput.value.trim();
+  if (!url) { setUrlStatus('error', 'Vui lòng nhập URL chapter'); return; }
+  if (!/^https?:\/\//i.test(url)) { setUrlStatus('error', 'URL phải bắt đầu bằng http:// hoặc https://'); return; }
+
+  urlLoadBtn.disabled = true;
+  setUrlStatus('loading', 'Đang tải trang, vui lòng chờ...');
+
+  try {
+    const result = await ipcRenderer.invoke('fetch-web-chapter', url);
+    if (!result || !result.images || result.images.length === 0) {
+      setUrlStatus('error', 'Không tìm thấy ảnh truyện. Thử trang khác hoặc kiểm tra URL.');
+      urlLoadBtn.disabled = false;
+      return;
+    }
+    setUrlStatus('success', `Tìm thấy ${result.images.length} trang — đang mở...`);
+    setTimeout(async () => {
+      closeUrlModal();
+      await loadFromWeb(result);
+    }, 600);
+  } catch (err) {
+    setUrlStatus('error', err.message || 'Lỗi không xác định');
+    urlLoadBtn.disabled = false;
+  }
+});
+
 // ── Window controls ────────────────────────────────────
 document.getElementById('btn-min').addEventListener('click', () => ipcRenderer.send('win-minimize'));
 document.getElementById('btn-max').addEventListener('click', () => ipcRenderer.send('win-maximize'));
@@ -75,7 +152,20 @@ async function loadCBZ(filePath) {
   }
 }
 
-// ── Load folder ────────────────────────────────────────
+// ── Load from Web ──────────────────────────────────────
+async function loadFromWeb(result) {
+  showLoading();
+  try {
+    const { images, title, url } = result;
+    // Dùng URL làm key để lưu lịch sử / tiến độ
+    currentKey = 'web:' + url;
+    const name = title || new URL(url).hostname;
+    await renderPages(images, name);
+  } catch (e) {
+    alert('Lỗi mở chapter web: ' + e.message);
+    hideLoading();
+  }
+}
 async function loadFolder(folderPath) {
   showLoading();
   try {
@@ -428,11 +518,16 @@ async function saveToHistory(name) {
       thumbnail = await ipcRenderer.invoke('get-folder-thumbnail', currentKey.replace('folder:', ''));
     } else if (currentKey.startsWith('cbz:')) {
       thumbnail = await ipcRenderer.invoke('get-cbz-thumbnail', currentKey.replace('cbz:', ''));
+    } else if (currentKey.startsWith('web:')) {
+      // Dùng ảnh đầu tiên của chapter làm thumbnail
+      if (currentImages.length > 0) thumbnail = currentImages[0];
     }
   } catch {}
 
-  const type = currentKey.startsWith('folder:') ? 'folder' : 'cbz';
-  const srcPath = currentKey.replace(/^(folder:|cbz:)/, '');
+  const type = currentKey.startsWith('folder:') ? 'folder'
+             : currentKey.startsWith('cbz:')    ? 'cbz'
+             : 'web';
+  const srcPath = currentKey.replace(/^(folder:|cbz:|web:)/, '');
   await ipcRenderer.invoke('history-add', { key: currentKey, name, type, path: srcPath, thumbnail });
 }
 
@@ -475,7 +570,7 @@ async function loadAndRenderHistory() {
 
     const meta = document.createElement('div');
     meta.className = 'history-meta';
-    meta.textContent = entry.type === 'folder' ? 'Thư mục' : 'CBZ';
+    meta.textContent = entry.type === 'folder' ? 'Thư mục' : entry.type === 'web' ? '🌐 Web' : 'CBZ';
 
     info.appendChild(nameEl);
     info.appendChild(meta);
@@ -508,6 +603,11 @@ async function loadAndRenderHistory() {
     // Click vào card → mở truyện
     card.addEventListener('click', () => {
       if (entry.type === 'folder') loadFolder(entry.path);
+      else if (entry.type === 'web') {
+        // Mở lại modal với URL đã điền sẵn
+        urlInput.value = entry.path;
+        openUrlModal();
+      }
       else loadCBZ(entry.path);
     });
 
