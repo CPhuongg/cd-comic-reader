@@ -40,6 +40,155 @@ const doublePageToggle  = document.getElementById('double-page-toggle');
 const pageInput         = document.getElementById('page-input');
 const pageTotal         = document.getElementById('page-total');
 
+// ── Library DOM refs ───────────────────────────────────
+const btnSaveLibrary   = document.getElementById('btn-save-library');
+const libraryViewEl    = document.getElementById('library-view');
+const libraryViewGrid  = document.getElementById('library-view-grid');
+
+// ── Library (localStorage) ─────────────────────────────
+function loadLibrary() {
+  try { return JSON.parse(localStorage.getItem('cd-library') || '[]'); } catch { return []; }
+}
+function saveLibraryData(lib) {
+  localStorage.setItem('cd-library', JSON.stringify(lib));
+}
+function addLibraryEntry(entry) {
+  const lib = loadLibrary();
+  if (lib.some(e => e.id === entry.id)) return false;
+  lib.push(entry);
+  saveLibraryData(lib);
+  return true;
+}
+function removeLibraryEntry(id) {
+  saveLibraryData(loadLibrary().filter(e => e.id !== id));
+}
+
+function updateSaveLibraryBtn() {
+  if (!currentKey) { btnSaveLibrary.style.display = 'none'; return; }
+  btnSaveLibrary.style.display = 'flex';
+  const isSaved = loadLibrary().some(e => e.id === currentKey);
+  btnSaveLibrary.classList.toggle('saved', isSaved);
+  btnSaveLibrary.innerHTML = isSaved
+    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> Đã lưu vào thư viện`
+    : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> Lưu vào thư viện`;
+}
+
+// ── Library view (main panel) ─────────────────────────
+function hideLibraryView() {
+  libraryViewEl.style.display = 'none';
+  if (currentKey) {
+    reader.style.display = 'block';
+  } else {
+    emptyState.style.display = 'flex';
+  }
+}
+
+async function showLibraryView() {
+  emptyState.style.display = 'none';
+  reader.style.display = 'none';
+  loadingEl.style.display = 'none';
+  libraryViewEl.style.display = 'flex';
+
+  const lib = loadLibrary();
+  libraryViewGrid.innerHTML = '';
+  const emptyEl = document.getElementById('library-view-empty');
+
+  if (!lib.length) {
+    emptyEl.style.display = 'flex';
+    libraryViewGrid.style.display = 'none';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  libraryViewGrid.style.display = 'grid';
+
+  // Dựng cards với placeholder trước, load ảnh bìa song song sau
+  const thumbEls = lib.map(entry => {
+    const card = document.createElement('div');
+    card.className = 'lib-view-card';
+    if (entry.id === currentKey) card.classList.add('active');
+
+    // Nút xóa (hiện khi hover)
+    const delBtn = document.createElement('button');
+    delBtn.className = 'lib-view-delete';
+    delBtn.title = 'Xóa khỏi thư viện';
+    delBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      card.style.transition = 'opacity 0.15s, transform 0.15s';
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        removeLibraryEntry(entry.id);
+        card.remove();
+        if (libraryViewGrid.children.length === 0) {
+          libraryViewGrid.style.display = 'none';
+          document.getElementById('library-view-empty').style.display = 'flex';
+        }
+        updateSaveLibraryBtn();
+      }, 150);
+    });
+    card.appendChild(delBtn);
+
+    const thumb = document.createElement('div');
+    thumb.className = 'lib-view-thumb';
+
+    const placeholderIcon = entry.type === 'web'
+      ? `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`
+      : entry.type === 'cbz'
+        ? `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`
+        : `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+
+    const typeLabel = entry.type === 'folder' ? 'Thư mục' : entry.type === 'web' ? 'Web' : 'CBZ';
+    thumb.innerHTML = `<div class="lib-view-thumb-placeholder">${placeholderIcon}<span>${typeLabel}</span></div>`;
+
+    const info = document.createElement('div');
+    info.className = 'lib-view-info';
+    info.innerHTML = `<div class="lib-view-name" title="${entry.name}">${entry.name}</div><div class="lib-view-type">${typeLabel}</div>`;
+
+    card.appendChild(thumb);
+    card.appendChild(info);
+
+    card.addEventListener('click', () => {
+      hideLibraryView();
+      if (entry.type === 'folder') loadFolder(entry.path);
+      else if (entry.type === 'web') { urlInput.value = entry.path; openUrlModal(); }
+      else loadCBZ(entry.path);
+    });
+
+    libraryViewGrid.appendChild(card);
+    return { entry, thumb };
+  });
+
+  // Load ảnh bìa song song (không chặn render)
+  thumbEls.forEach(async ({ entry, thumb }) => {
+    if (entry.type === 'web') return;
+    try {
+      const ipcCall = entry.type === 'folder' ? 'get-folder-thumbnail' : 'get-cbz-thumbnail';
+      const src = await ipcRenderer.invoke(ipcCall, entry.path);
+      if (src && libraryViewEl.style.display !== 'none') {
+        thumb.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = src;
+        thumb.appendChild(img);
+      }
+    } catch {}
+  });
+}
+
+document.getElementById('btn-show-library').addEventListener('click', showLibraryView);
+document.getElementById('btn-close-library-view').addEventListener('click', hideLibraryView);
+
+btnSaveLibrary.addEventListener('click', () => {
+  if (!currentKey) return;
+  const type = currentKey.startsWith('folder:') ? 'folder'
+             : currentKey.startsWith('cbz:')    ? 'cbz' : 'web';
+  const srcPath = currentKey.replace(/^(folder:|cbz:|web:)/, '');
+  const name = infoName.textContent || srcPath.split(/[\\/]/).pop() || srcPath;
+  addLibraryEntry({ id: currentKey, name, type, path: srcPath });
+  updateSaveLibraryBtn();
+});
+
 // ── Init ───────────────────────────────────────────────
 loadAndRenderHistory();
 
@@ -210,6 +359,7 @@ async function renderPages(imageSrcs, name) {
 
   await saveToHistory(name);
   await loadAndRenderHistory();
+  updateSaveLibraryBtn();
 
   emptyState.style.display = 'none';
   reader.style.display = 'block';
@@ -390,6 +540,13 @@ function applyReadMode() {
     updateScrollNavUI();
     setupPageObserver(readMode !== 'scroll');
 
+    // scroll-rtl: trang 0 nằm ở phải nhất (row-reverse), cần scroll đến cuối
+    if (readMode === 'scroll-rtl') {
+      requestAnimationFrame(() => {
+        reader.scrollLeft = reader.scrollWidth - reader.clientWidth;
+      });
+    }
+
     // Cuộn tới trang đang đọc (giữ vị trí khi đổi từ chế độ paged)
     if (comingFromPaged) {
       const target = pagesContainer.querySelector(`.page-img[data-index="${currentPage}"]`);
@@ -460,14 +617,15 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Home') { reader.scrollTo({ left: 0, behavior: 'smooth' }); e.preventDefault(); }
     if (e.key === 'End')  { reader.scrollTo({ left: reader.scrollWidth, behavior: 'smooth' }); e.preventDefault(); }
   } else if (readMode === 'scroll-rtl') {
+    // row-reverse: trang 0 ở scrollLeft max, trang tiếp theo = giảm scrollLeft
     if (e.key === 'ArrowLeft' || e.key === 'PageDown') {
-      reader.scrollBy({ left: reader.clientWidth * 0.9, behavior: 'smooth' }); e.preventDefault();
-    }
-    if (e.key === 'ArrowRight' || e.key === 'PageUp') {
       reader.scrollBy({ left: -reader.clientWidth * 0.9, behavior: 'smooth' }); e.preventDefault();
     }
-    if (e.key === 'Home') { reader.scrollTo({ left: 0, behavior: 'smooth' }); e.preventDefault(); }
-    if (e.key === 'End')  { reader.scrollTo({ left: reader.scrollWidth, behavior: 'smooth' }); e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'PageUp') {
+      reader.scrollBy({ left: reader.clientWidth * 0.9, behavior: 'smooth' }); e.preventDefault();
+    }
+    if (e.key === 'Home') { reader.scrollTo({ left: reader.scrollWidth, behavior: 'smooth' }); e.preventDefault(); }
+    if (e.key === 'End')  { reader.scrollTo({ left: 0, behavior: 'smooth' }); e.preventDefault(); }
   } else {
     // Paged mode — ArrowLeft/Right + PageUp/Down
     if (e.key === 'ArrowRight' || e.key === 'PageDown') {
@@ -619,6 +777,7 @@ async function loadAndRenderHistory() {
 function showLoading() {
   emptyState.style.display = 'none';
   reader.style.display = 'none';
+  libraryViewEl.style.display = 'none';
   loadingEl.style.display = 'flex';
 }
 
@@ -752,7 +911,9 @@ reader.addEventListener('wheel', (e) => {
   if (readMode === 'scroll-ltr' || readMode === 'scroll-rtl') {
     if (e.deltaY !== 0 && e.deltaX === 0) {
       e.preventDefault();
-      reader.scrollBy({ left: e.deltaY * 2.5, behavior: 'smooth' });
+      // scroll-rtl: cuộn xuống = đọc tiếp = giảm scrollLeft (ngược chiều scroll-ltr)
+      const dir = readMode === 'scroll-rtl' ? -1 : 1;
+      reader.scrollBy({ left: e.deltaY * 2.5 * dir, behavior: 'smooth' });
     }
   }
 }, { passive: false });
