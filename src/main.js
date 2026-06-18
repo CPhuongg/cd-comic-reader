@@ -13,9 +13,10 @@ function createWindow() {
     frame: false,
     backgroundColor: '#0f0f0f',
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false, // cần thiết để load ảnh từ các trang web truyện
+      preload: path.join(__dirname, 'preload.js')
     },
     titleBarStyle: 'hidden'
   });

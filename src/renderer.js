@@ -1,5 +1,4 @@
-const { ipcRenderer } = require('electron');
-const path = require('path');
+const ipcRenderer = window.electronAPI;
 
 // ── State ──────────────────────────────────────────────
 let currentImages = [];
@@ -11,6 +10,10 @@ let scrollCurrentPage = 0; // Trang đang hiển thị ở chế độ cuộn (0
 let readMode      = 'scroll'; // 'scroll' | 'scroll-ltr' | 'scroll-rtl' | 'ltr' | 'rtl'
 let currentPage   = 0;        // dùng cho chế độ paged
 let isDoublePage = false;
+
+// Cache scroll page nodes để tránh rebuild DOM khi đổi mode
+const _scrollHolder = document.createElement('div');
+let _scrollHolderKey = '';
 
 // ── DOM refs ───────────────────────────────────────────
 const reader            = document.getElementById('reader');
@@ -44,6 +47,87 @@ const pageTotal         = document.getElementById('page-total');
 const btnSaveLibrary   = document.getElementById('btn-save-library');
 const libraryViewEl    = document.getElementById('library-view');
 const libraryViewGrid  = document.getElementById('library-view-grid');
+
+// ── Bookmarks (localStorage) ──────────────────────────
+const bookmarkSection   = document.getElementById('bookmark-section');
+const bookmarkList      = document.getElementById('bookmark-list');
+const bookmarkEmpty     = document.getElementById('bookmark-empty');
+const btnAddBookmark    = document.getElementById('btn-add-bookmark');
+
+function loadBookmarks(key) {
+  try {
+    const all = JSON.parse(localStorage.getItem('cd-bookmarks') || '{}');
+    return all[key] || [];
+  } catch { return []; }
+}
+function saveBookmarks(key, pages) {
+  try {
+    const all = JSON.parse(localStorage.getItem('cd-bookmarks') || '{}');
+    if (pages.length === 0) { delete all[key]; }
+    else { all[key] = pages; }
+    localStorage.setItem('cd-bookmarks', JSON.stringify(all));
+  } catch (e) { console.error('saveBookmarks:', e); }
+}
+function addBookmark(page) {
+  const pages = loadBookmarks(currentKey);
+  if (pages.includes(page)) return;
+  pages.push(page);
+  pages.sort((a, b) => a - b);
+  saveBookmarks(currentKey, pages);
+  renderBookmarks();
+}
+function removeBookmark(page) {
+  const pages = loadBookmarks(currentKey).filter(p => p !== page);
+  saveBookmarks(currentKey, pages);
+  renderBookmarks();
+}
+function renderBookmarks() {
+  if (!currentKey) { bookmarkSection.style.display = 'none'; return; }
+  bookmarkSection.style.display = 'block';
+  const pages = loadBookmarks(currentKey);
+  bookmarkList.textContent = '';
+  if (pages.length === 0) {
+    bookmarkList.appendChild(bookmarkEmpty);
+    return;
+  }
+  pages.forEach(pageIdx => {
+    const item = document.createElement('div');
+    item.className = 'bookmark-item';
+
+    const label = document.createElement('div');
+    label.className = 'bookmark-item-label';
+    const mark = document.createElement('span');
+    mark.textContent = `Trang ${pageIdx + 1}`;
+    label.appendChild(mark);
+    label.append(` / ${currentImages.length}`);
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'bookmark-del';
+    delBtn.title = 'Xóa dấu trang';
+    delBtn.innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    delBtn.addEventListener('click', (e) => { e.stopPropagation(); removeBookmark(pageIdx); });
+    item.addEventListener('click', () => jumpToBookmark(pageIdx));
+    item.appendChild(label);
+    item.appendChild(delBtn);
+    bookmarkList.appendChild(item);
+  });
+}
+function jumpToBookmark(pageIdx) {
+  if (isScrollMode()) {
+    scrollCurrentPage = pageIdx;
+    scrollToPageIndex(pageIdx);
+  } else {
+    currentPage = isDoublePage ? pageIdx - (pageIdx % 2) : pageIdx;
+    renderPaged();
+  }
+}
+
+btnAddBookmark.addEventListener('click', () => {
+  const page = isScrollMode() ? scrollCurrentPage : currentPage;
+  addBookmark(page);
+});
 
 // ── Library (localStorage) ─────────────────────────────
 function loadLibrary() {
@@ -144,7 +228,18 @@ async function showLibraryView() {
 
     const info = document.createElement('div');
     info.className = 'lib-view-info';
-    info.innerHTML = `<div class="lib-view-name" title="${entry.name}">${entry.name}</div><div class="lib-view-type">${typeLabel}</div>`;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'lib-view-name';
+    nameEl.title = entry.name;
+    nameEl.textContent = entry.name;
+
+    const typeEl = document.createElement('div');
+    typeEl.className = 'lib-view-type';
+    typeEl.textContent = typeLabel;
+
+    info.appendChild(nameEl);
+    info.appendChild(typeEl);
 
     card.appendChild(thumb);
     card.appendChild(info);
@@ -172,12 +267,55 @@ async function showLibraryView() {
         img.src = src;
         thumb.appendChild(img);
       }
-    } catch {}
+    } catch (e) { console.warn('Thumbnail load failed:', entry.path, e); }
   });
 }
 
 document.getElementById('btn-show-library').addEventListener('click', showLibraryView);
 document.getElementById('btn-close-library-view').addEventListener('click', hideLibraryView);
+
+// ── Export / Import library ────────────────────────────
+document.getElementById('btn-export-library').addEventListener('click', () => {
+  const lib = loadLibrary();
+  const json = JSON.stringify({ version: 1, library: lib }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cd-library.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+const importInput = document.getElementById('import-library-input');
+document.getElementById('btn-import-library').addEventListener('click', () => importInput.click());
+importInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const entries = Array.isArray(data) ? data : (data.library || []);
+    if (!Array.isArray(entries)) { alert('File không hợp lệ.'); return; }
+    const existing = loadLibrary();
+    const existingIds = new Set(existing.map(e => e.id));
+    let added = 0;
+    entries.forEach(entry => {
+      if (entry.id && entry.name && entry.type && !existingIds.has(entry.id)) {
+        existing.push(entry);
+        existingIds.add(entry.id);
+        added++;
+      }
+    });
+    saveLibraryData(existing);
+    importInput.value = '';
+    await showLibraryView();
+    if (added > 0) alert(`Đã nhập ${added} mục vào thư viện.`);
+    else alert('Không có mục mới nào được thêm (tất cả đã tồn tại).');
+  } catch {
+    alert('Lỗi đọc file. Đảm bảo file JSON hợp lệ.');
+  }
+});
 
 btnSaveLibrary.addEventListener('click', () => {
   if (!currentKey) return;
@@ -217,12 +355,17 @@ function setUrlStatus(type, msg) {
   if (!type || !msg) { urlStatus.style.display = 'none'; return; }
   urlStatus.style.display = 'flex';
   urlStatus.className = 'url-status ' + type;
+  urlStatus.textContent = '';
+  const iconSpan = document.createElement('span');
+  const textSpan = document.createElement('span');
+  textSpan.textContent = msg;
   if (type === 'loading') {
-    urlStatus.innerHTML = `<span class="status-spinner"></span><span>${msg}</span>`;
+    iconSpan.className = 'status-spinner';
   } else {
-    const icon = type === 'error' ? '✕' : '✓';
-    urlStatus.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+    iconSpan.textContent = type === 'error' ? '✕' : '✓';
   }
+  urlStatus.appendChild(iconSpan);
+  urlStatus.appendChild(textSpan);
 }
 
 document.getElementById('btn-open-url').addEventListener('click', openUrlModal);
@@ -235,7 +378,7 @@ urlPasteBtn.addEventListener('click', async () => {
     const text = await navigator.clipboard.readText();
     urlInput.value = text.trim();
     urlInput.focus();
-  } catch {}
+  } catch (e) { console.warn('Clipboard read failed:', e); }
 });
 
 urlInput.addEventListener('keydown', (e) => {
@@ -268,6 +411,12 @@ urlLoadBtn.addEventListener('click', async () => {
     urlLoadBtn.disabled = false;
   }
 });
+
+// ── Fullscreen (ẩn/hiện sidebar) ──────────────────────
+function toggleSidebar() {
+  document.body.classList.toggle('sidebar-hidden');
+}
+document.getElementById('btn-fullscreen').addEventListener('click', toggleSidebar);
 
 // ── Window controls ────────────────────────────────────
 document.getElementById('btn-min').addEventListener('click', () => ipcRenderer.send('win-minimize'));
@@ -333,6 +482,14 @@ async function loadFolder(folderPath) {
 // ── Render pages ───────────────────────────────────────
 function buildScrollPages() {
   pagesContainer.innerHTML = '';
+
+  // Reuse cached nodes nếu cùng comic (tránh rebuild toàn bộ DOM khi đổi mode)
+  if (_scrollHolderKey === currentKey && _scrollHolder.children.length === currentImages.length) {
+    while (_scrollHolder.firstChild) pagesContainer.appendChild(_scrollHolder.firstChild);
+    return;
+  }
+
+  _scrollHolderKey = currentKey;
   currentImages.forEach((src, idx) => {
     const img = document.createElement('img');
     img.className = 'page-img';
@@ -360,6 +517,7 @@ async function renderPages(imageSrcs, name) {
   await saveToHistory(name);
   await loadAndRenderHistory();
   updateSaveLibraryBtn();
+  renderBookmarks();
 
   emptyState.style.display = 'none';
   reader.style.display = 'block';
@@ -571,6 +729,12 @@ function applyReadMode() {
     const comingFromScroll = !!container.querySelector('.page-img');
     if (comingFromScroll) {
       currentPage = scrollCurrentPage;
+      // Lưu scroll nodes vào cache trước khi renderPaged() xóa pagesContainer
+      _scrollHolderKey = currentKey;
+      while (_scrollHolder.firstChild) _scrollHolder.removeChild(_scrollHolder.firstChild);
+      Array.from(pagesContainer.querySelectorAll('.page-img')).forEach(img => {
+        _scrollHolder.appendChild(img);
+      });
     }
 
     reader.classList.add('paged-mode');
@@ -640,6 +804,14 @@ document.addEventListener('keydown', (e) => {
 
   if (e.key === '[') { widthSlider.value = Math.max(30, imgWidth - 5); widthSlider.dispatchEvent(new Event('input')); }
   if (e.key === ']') { widthSlider.value = Math.min(100, imgWidth + 5); widthSlider.dispatchEvent(new Event('input')); }
+
+  const tag = e.target.tagName;
+  const isInput = tag === 'INPUT' || tag === 'TEXTAREA';
+  if (e.key === 'f' && !e.ctrlKey && !e.altKey && !isInput) toggleSidebar();
+  if (e.key === 'b' && !e.ctrlKey && !e.altKey && !isInput && currentKey) {
+    const page = isScrollMode() ? scrollCurrentPage : currentPage;
+    addBookmark(page);
+  }
 });
 
 reader.addEventListener('wheel', (e) => {
@@ -680,7 +852,7 @@ async function saveToHistory(name) {
       // Dùng ảnh đầu tiên của chapter làm thumbnail
       if (currentImages.length > 0) thumbnail = currentImages[0];
     }
-  } catch {}
+  } catch (e) { console.warn('Thumbnail for history failed:', e); }
 
   const type = currentKey.startsWith('folder:') ? 'folder'
              : currentKey.startsWith('cbz:')    ? 'cbz'
@@ -824,7 +996,7 @@ function renderPaged() {
   pageInput.value = fromDisp;
   pageInput.max = currentImages.length;
   pageTotal.textContent = ` / ${currentImages.length}`;
-  pagedPageInfo.title = `Trang ${label} / ${currentImages.length}`;
+  pageIndicator.title = `Trang ${label} / ${currentImages.length}`;
   pageIndicatorTx.textContent = `${label} / ${currentImages.length}`;
   infoCurrent.textContent = label;
 

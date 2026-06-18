@@ -17,6 +17,9 @@
     <span id="app-title">Comic Reader</span>
   </div>
   <div id="titlebar-controls">
+    <button class="win-btn" id="btn-fullscreen" title="Ẩn/hiện thanh bên (F)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <button class="win-btn" id="btn-min" title="Thu nhỏ">&#8211;</button>
     <button class="win-btn" id="btn-max" title="Phóng to">&#9744;</button>
     <button class="win-btn close" id="btn-close" title="Đóng">&#10005;</button>
@@ -149,6 +152,18 @@
     <div class="info-row"><span class="info-key">Số trang</span><span class="info-val" id="info-pages">—</span></div>
     <div class="info-row"><span class="info-key">Trang hiện tại</span><span class="info-val" id="info-current">—</span></div>
   </div>
+  <div id="bookmark-section">
+    <div class="sidebar-section-label bookmark-header">
+      <span>Dấu trang</span>
+      <button type="button" id="btn-add-bookmark" title="Đánh dấu trang hiện tại (B)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="bookmark-list">
+      <div id="bookmark-empty">Chưa có dấu trang</div>
+    </div>
+  </div>
+
   <button id="btn-save-library" style="display:none;">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
     Lưu vào thư viện
@@ -198,7 +213,18 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
         Thư viện
       </div>
-      <button id="btn-close-library-view" title="Đóng thư viện">&#10005;</button>
+      <div id="library-view-actions">
+        <button type="button" id="btn-export-library" title="Xuất thư viện ra file JSON">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất
+        </button>
+        <button type="button" id="btn-import-library" title="Nhập thư viện từ file JSON">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Nhập
+        </button>
+        <input type="file" id="import-library-input" accept=".json" class="hidden-input">
+        <button type="button" id="btn-close-library-view" title="Đóng thư viện">&#10005;</button>
+      </div>
     </div>
     <div id="library-view-body">
       <div id="library-view-grid"></div>
