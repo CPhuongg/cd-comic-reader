@@ -1,11 +1,14 @@
 {
   "name": "cd-comic-reader",
-  "version": "1.0.0",
-  "description": "CD Comic Reader - Manga & Comic Reader for Windows",
+  "version": "1.2.0",
+  "description": "CD Comic Reader - Manga, Comic & Video Reader for Windows",
+  "author": "CD Comic Reader",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win"
+    "build": "electron-builder --win",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node scripts/check-project.js",
+    "smoke": "node scripts/e2e-smoke.js"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -17,8 +20,14 @@
   "build": {
     "appId": "com.cd.comicreader",
     "productName": "CD Comic Reader",
+    "files": [
+      "src/**/*",
+      "assets/icon.ico",
+      "package.json"
+    ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,

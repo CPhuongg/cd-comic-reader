@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: file: http: https:; media-src 'self' blob: file:; connect-src 'self' http: https:">
   <title>CD Comic Reader</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -17,12 +18,12 @@
     <span id="app-title">Comic Reader</span>
   </div>
   <div id="titlebar-controls">
-    <button class="win-btn" id="btn-fullscreen" title="Ẩn/hiện thanh bên (F)">
+    <button class="win-btn" id="btn-fullscreen" title="Show/hide sidebar (F)">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <button class="win-btn" id="btn-min" title="Thu nhỏ">&#8211;</button>
-    <button class="win-btn" id="btn-max" title="Phóng to">&#9744;</button>
-    <button class="win-btn close" id="btn-close" title="Đóng">&#10005;</button>
+    <button class="win-btn" id="btn-min" title="Minimize">&#8211;</button>
+    <button class="win-btn" id="btn-max" title="Maximize">&#9744;</button>
+    <button class="win-btn close" id="btn-close" title="Close">&#10005;</button>
   </div>
 </div>
 
@@ -31,26 +32,36 @@
   <div id="sidebar-header">
     <button class="action-btn" id="btn-open-file">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-      Mở file CBZ
+      Open CBZ
     </button>
     <button class="action-btn" id="btn-open-folder">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      Mở thư mục
+      Open Folder
     </button>
     <button class="action-btn accent" id="btn-open-url">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      Mở từ Web
+      Open from Web
     </button>
     <button class="action-btn" id="btn-show-library">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Thư viện
+      Library
     </button>
+    <div class="video-open-group">
+      <button class="action-btn video-btn" id="btn-open-video-file" title="Open a video file (mp4, mkv, avi...)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Open Video
+      </button>
+      <button class="action-btn video-btn video-folder-btn" id="btn-open-video-folder" title="Open a folder containing videos">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Folder
+      </button>
+    </div>
   </div>
 
-  <div class="sidebar-section-label">Cài đặt hiển thị</div>
+  <div class="sidebar-section-label">Display Settings</div>
 
   <div class="setting-row">
-    <label class="setting-label">Bề ngang ảnh</label>
+    <label class="setting-label">Image Width</label>
     <div class="slider-wrap">
       <input type="range" id="width-slider" min="30" max="100" value="70" step="1">
       <span id="width-value">70%</span>
@@ -58,7 +69,7 @@
   </div>
 
   <div class="setting-row">
-    <label class="setting-label">Khoảng cách trang</label>
+    <label class="setting-label">Page Gap</label>
     <div class="slider-wrap">
       <input type="range" id="gap-slider" min="0" max="32" value="4" step="1">
       <span id="gap-value">4px</span>
@@ -66,118 +77,118 @@
   </div>
 
   <div class="setting-row">
-    <label class="setting-label">Chế độ đọc</label>
+    <label class="setting-label">Reading Mode</label>
     <div id="read-mode-options">
-      <button class="mode-btn active" data-mode="scroll" title="Cuộn dọc">
+      <button class="mode-btn active" data-mode="scroll" title="Vertical scroll">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-        Cuộn dọc
+        Vertical Scroll
       </button>
-      <button class="mode-btn" data-mode="scroll-ltr" title="Cuộn ngang trái → phải">
+      <button class="mode-btn" data-mode="scroll-ltr" title="Horizontal scroll left to right">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        Cuộn ngang L→R
+        Horizontal L→R
       </button>
-      <button class="mode-btn" data-mode="scroll-rtl" title="Cuộn ngang phải → trái (manga)">
+      <button class="mode-btn" data-mode="scroll-rtl" title="Horizontal scroll right to left (manga)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 5 5 12 12 19"/></svg>
-        Cuộn ngang R→L
+        Horizontal R→L
       </button>
-      <button class="mode-btn" data-mode="ltr" title="Trang đơn trái → phải">
+      <button class="mode-btn" data-mode="ltr" title="Single page left to right">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="7" height="14" rx="1"/><rect x="14" y="5" width="7" height="14" rx="1"/><polyline points="12 9 15 12 12 15"/></svg>
-        Trang L→R
+        Page L→R
       </button>
-      <button class="mode-btn" data-mode="rtl" title="Trang đơn phải → trái (manga)">
+      <button class="mode-btn" data-mode="rtl" title="Single page right to left (manga)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="7" height="14" rx="1"/><rect x="14" y="5" width="7" height="14" rx="1"/><polyline points="12 9 9 12 12 15"/></svg>
-        Trang R→L
+        Page R→L
       </button>
     </div>
   </div>
 
-  <!-- Điều hướng cuộn (hiển thị khi ở chế độ scroll) -->
+  <!-- Scroll navigation (shown in scroll mode) -->
   <div id="sidebar-scroll-nav" style="display:none;">
-    <div class="sidebar-section-label" style="margin-top:1rem;">Điều hướng</div>
+    <div class="sidebar-section-label" style="margin-top:1rem;">Navigation</div>
     <div id="sidebar-scroll-controls">
-      <button id="scroll-nav-prev" title="Trang trước">
+      <button id="scroll-nav-prev" title="Previous page">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        Trang trước
+        Previous
       </button>
       <div id="sidebar-scroll-page-row">
         <span id="scroll-page-display">1</span>
         <span id="scroll-page-total"> / 1</span>
       </div>
-      <button id="scroll-nav-next" title="Trang sau">
+      <button id="scroll-nav-next" title="Next page">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        Trang sau
+        Next
       </button>
     </div>
   </div>
 
-  <!-- Điều hướng trang (hiển thị khi ở chế độ paged) -->
+  <!-- Page navigation (shown in paged mode) -->
   <div id="sidebar-paged-nav" style="display:none;">
-    <div class="sidebar-section-label" style="margin-top:1rem;">Điều hướng trang</div>
+    <div class="sidebar-section-label" style="margin-top:1rem;">Page Navigation</div>
     <div id="sidebar-page-controls">
-      <button id="nav-prev" title="Trang trước">
+      <button id="nav-prev" title="Previous page">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        Trang trước
+        Previous
       </button>
       <div id="sidebar-page-input-row">
-        <input type="number" id="page-input" min="1" value="1" title="Nhập số trang và nhấn Enter">
+        <input type="number" id="page-input" min="1" value="1" title="Enter a page number and press Enter">
         <span id="page-total"> / 1</span>
       </div>
-      <button id="nav-next" title="Trang sau">
+      <button id="nav-next" title="Next page">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        Trang sau
+        Next
       </button>
     </div>
     <div id="sidebar-double-page" style="margin-top:8px;">
       <label style="display:flex; align-items:center; gap:8px; font-size:11px; cursor:pointer; color:var(--text-secondary);">
         <input type="checkbox" id="double-page-toggle">
-        Hiển thị 2 trang
+        Show 2 pages
       </label>
     </div>
   </div>
 
   <div class="setting-row">
-    <label class="setting-label">Nền đọc</label>
+    <label class="setting-label">Reader Background</label>
     <div id="bg-options">
-      <button class="bg-btn active" data-bg="#0f0f0f" title="Đen" style="background:#0f0f0f;"></button>
-      <button class="bg-btn" data-bg="#1a1a2e" title="Xanh đêm" style="background:#1a1a2e;"></button>
-      <button class="bg-btn" data-bg="#2a2a2a" title="Xám tối" style="background:#2a2a2a;"></button>
-      <button class="bg-btn" data-bg="#f5f0e8" title="Kem sáng" style="background:#f5f0e8;"></button>
-      <button class="bg-btn" data-bg="#ffffff" title="Trắng" style="background:#ffffff; border-color:#555;"></button>
+      <button class="bg-btn active" data-bg="#0f0f0f" title="Black" style="background:#0f0f0f;"></button>
+      <button class="bg-btn" data-bg="#1a1a2e" title="Midnight blue" style="background:#1a1a2e;"></button>
+      <button class="bg-btn" data-bg="#2a2a2a" title="Dark gray" style="background:#2a2a2a;"></button>
+      <button class="bg-btn" data-bg="#f5f0e8" title="Light cream" style="background:#f5f0e8;"></button>
+      <button class="bg-btn" data-bg="#ffffff" title="White" style="background:#ffffff; border-color:#555;"></button>
     </div>
   </div>
 
-  <div class="sidebar-section-label" style="margin-top:1.5rem;">Thông tin</div>
+  <div class="sidebar-section-label" style="margin-top:1.5rem;">Info</div>
   <div id="info-panel">
-    <div class="info-row"><span class="info-key">Tên</span><span class="info-val" id="info-name">—</span></div>
-    <div class="info-row"><span class="info-key">Số trang</span><span class="info-val" id="info-pages">—</span></div>
-    <div class="info-row"><span class="info-key">Trang hiện tại</span><span class="info-val" id="info-current">—</span></div>
+    <div class="info-row"><span class="info-key">Name</span><span class="info-val" id="info-name">—</span></div>
+    <div class="info-row"><span class="info-key">Pages</span><span class="info-val" id="info-pages">—</span></div>
+    <div class="info-row"><span class="info-key">Current Page</span><span class="info-val" id="info-current">—</span></div>
   </div>
   <div id="bookmark-section">
     <div class="sidebar-section-label bookmark-header">
-      <span>Dấu trang</span>
-      <button type="button" id="btn-add-bookmark" title="Đánh dấu trang hiện tại (B)">
+      <span>Bookmarks</span>
+      <button type="button" id="btn-add-bookmark" title="Bookmark current page (B)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
     <div id="bookmark-list">
-      <div id="bookmark-empty">Chưa có dấu trang</div>
+      <div id="bookmark-empty">No bookmarks yet</div>
     </div>
   </div>
 
   <button id="btn-save-library" style="display:none;">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-    Lưu vào thư viện
+    Save to Library
   </button>
 
   <!-- History -->
   <div class="sidebar-section-label" style="margin-top:1.5rem; display:flex; align-items:center; justify-content:space-between;">
-    <span>Đọc gần đây</span>
-    <button id="btn-clear-history" title="Xóa toàn bộ lịch sử">
+    <span>Recently Read</span>
+    <button id="btn-clear-history" title="Clear all history">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
     </button>
   </div>
   <div id="history-list">
-    <div id="history-empty">Chưa có lịch sử đọc</div>
+    <div id="history-empty">No reading history yet</div>
   </div>
 
 </div>
@@ -189,11 +200,11 @@
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
     </div>
     <div id="empty-title">CD Comic Reader</div>
-    <div id="empty-sub">Mở file CBZ/ZIP hoặc thư mục ảnh để bắt đầu đọc</div>
+    <div id="empty-sub">Open a CBZ/ZIP file or image folder to start reading</div>
     <div id="empty-shortcuts">
-      <span>Ctrl+O — Mở file</span>
-      <span>Ctrl+F — Mở thư mục</span>
-      <span>[ ] — Điều chỉnh bề ngang</span>
+      <span>Ctrl+O — Open file</span>
+      <span>Ctrl+F — Open folder</span>
+      <span>[ ] — Adjust width</span>
     </div>
   </div>
 
@@ -203,7 +214,50 @@
 
   <div id="loading" style="display:none;">
     <div id="loading-spinner"></div>
-    <div id="loading-text">Đang tải truyện...</div>
+    <div id="loading-text">Loading comic...</div>
+  </div>
+
+  <!-- Video view -->
+  <div id="video-view" style="display:none;">
+    <div id="video-main">
+      <video id="video-player" preload="metadata"></video>
+      <div id="video-controls">
+        <div id="video-seekbar-wrap">
+          <input type="range" id="video-seek" min="0" value="0" step="0.01">
+        </div>
+        <div id="video-bottom-row">
+          <div id="video-left-controls">
+            <button id="video-prev" title="Previous video">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+            </button>
+            <button id="video-play" title="Play/Pause (Space)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+            <button id="video-next" title="Next video">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+            </button>
+            <button id="video-mute" title="Mute/Unmute (M)">
+              <svg id="video-vol-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
+            <input type="range" id="video-volume" min="0" max="1" step="0.05" value="1">
+            <span id="video-time">0:00 / 0:00</span>
+          </div>
+          <div id="video-right-controls">
+            <select id="video-speed" title="Playback speed">
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+            </select>
+            <button id="video-fullscreen" title="Fullscreen">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="video-playlist"></div>
   </div>
 
   <!-- Library view panel -->
@@ -211,27 +265,27 @@
     <div id="library-view-header">
       <div id="library-view-title">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-        Thư viện
+        Library
       </div>
       <div id="library-view-actions">
-        <button type="button" id="btn-export-library" title="Xuất thư viện ra file JSON">
+        <button type="button" id="btn-export-library" title="Export library to a JSON file">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Xuất
+          Export
         </button>
-        <button type="button" id="btn-import-library" title="Nhập thư viện từ file JSON">
+        <button type="button" id="btn-import-library" title="Import library from a JSON file">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Nhập
+          Import
         </button>
         <input type="file" id="import-library-input" accept=".json" class="hidden-input">
-        <button type="button" id="btn-close-library-view" title="Đóng thư viện">&#10005;</button>
+        <button type="button" id="btn-close-library-view" title="Close library">&#10005;</button>
       </div>
     </div>
     <div id="library-view-body">
       <div id="library-view-grid"></div>
       <div id="library-view-empty" style="display:none;">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-        <span>Thư viện trống</span>
-        <span id="library-view-empty-sub">Thêm truyện bằng nút "Lưu vào thư viện" hoặc các nút + trong phần Thư viện ở sidebar</span>
+        <span>Library is empty</span>
+        <span id="library-view-empty-sub">Add comics with the "Save to Library" button or the + buttons in the sidebar Library section</span>
       </div>
     </div>
   </div>
@@ -241,7 +295,7 @@
   <span id="page-indicator-text">1 / 1</span>
 </div>
 
-<button id="scroll-top" style="display:none;" title="Lên đầu">
+<button id="scroll-top" style="display:none;" title="Back to top">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
 </button>
 
@@ -251,16 +305,16 @@
     <div id="url-modal-header">
       <div id="url-modal-title">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        Mở chapter từ Web
+        Open Chapter from Web
       </div>
       <button id="url-modal-close">&#10005;</button>
     </div>
 
     <div id="url-modal-body">
-      <label class="url-label">URL chapter truyện</label>
+      <label class="url-label">Comic chapter URL</label>
       <div id="url-input-wrap">
-        <input type="text" id="url-input" placeholder="https://nettruyen.com/truyen/... hoặc bất kỳ trang truyện nào" autocomplete="off" spellcheck="false">
-        <button id="url-paste-btn" title="Dán từ clipboard">
+        <input type="text" id="url-input" placeholder="https://nettruyen.com/truyen/... or any comic site" autocomplete="off" spellcheck="false">
+        <button id="url-paste-btn" title="Paste from clipboard">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
         </button>
       </div>
@@ -271,16 +325,16 @@
         <span class="site-tag">TruyenQQ</span>
         <span class="site-tag">NhaTruyen</span>
         <span class="site-tag">TruyenFull</span>
-        <span class="site-tag site-tag-generic">+ Tự phát hiện</span>
+        <span class="site-tag site-tag-generic">+ Auto detect</span>
       </div>
 
       <div id="url-status" style="display:none;"></div>
 
       <div id="url-modal-actions">
-        <button id="url-cancel-btn">Hủy</button>
+        <button id="url-cancel-btn">Cancel</button>
         <button id="url-load-btn">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Tải chapter
+          Load Chapter
         </button>
       </div>
     </div>
